@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<!--
+   ______                            __
+  / ____/___  ____ ___  ____  __  __/ /____  _____
+ / /   / __ \/ __ `__ \/ __ \/ / / / __/ _ \/ ___/
+/ /___/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /
+\____/\____/_/ /_/ /_/ .___/\__,_/\__/\___/_/
+                    /_/
+        Created with Perplexity Computer
+        https://www.perplexity.ai/computer
+-->
+
+<!-- Perplexity Computer Attribution — SEO Meta Tags -->
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+<meta property="og:see_also" content="https://www.perplexity.ai/computer">
+<link rel="author" href="https://www.perplexity.ai/computer">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#1a9fff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>GPay v3 — Dompet Digital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash-screen" class="splash-screen">
+  <div class="splash-content">
+    <div class="splash-logo">
+      <svg viewBox="0 0 60 60" class="splash-icon" fill="none">
+        <rect width="60" height="60" rx="16" fill="url(#splashGrad)"/>
+        <path d="M18 30c0-6.627 5.373-12 12-12h2c4.418 0 8 3.582 8 8s-3.582 8-8 8H26v-4h6c2.209 0 4-1.791 4-4s-1.791-4-4-4h-2c-4.418 0-8 3.582-8 8v4c0 4.418 3.582 8 8 8h8v4h-8c-6.627 0-12-5.373-12-12z" fill="#fff"/>
+        <defs>
+          <linearGradient id="splashGrad" x1="0" y1="0" x2="60" y2="60">
+            <stop stop-color="#1a9fff"/>
+            <stop offset="1" stop-color="#0066cc"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <h1 class="splash-title">GPay</h1>
+      <p class="splash-subtitle">Dompet Digital Terpercaya</p>
+    </div>
+    <div class="splash-loader">
+      <div class="splash-loader-bar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP CONTAINER (Desktop phone frame) -->
+<div id="app-frame" class="app-frame">
+<div id="app" class="app">
+
+  <!-- AUTH PAGES -->
+  <div id="page-login" class="page auth-page" data-page="login">
+    <div class="auth-container">
+      <div class="auth-header">
+        <svg viewBox="0 0 60 60" class="auth-logo" fill="none">
+          <rect width="60" height="60" rx="16" fill="url(#authGrad)"/>
+          <path d="M18 30c0-6.627 5.373-12 12-12h2c4.418 0 8 3.582 8 8s-3.582 8-8 8H26v-4h6c2.209 0 4-1.791 4-4s-1.791-4-4-4h-2c-4.418 0-8 3.582-8 8v4c0 4.418 3.582 8 8 8h8v4h-8c-6.627 0-12-5.373-12-12z" fill="#fff"/>
+          <defs><linearGradient id="authGrad" x1="0" y1="0" x2="60" y2="60"><stop stop-color="#1a9fff"/><stop offset="1" stop-color="#0066cc"/></linearGradient></defs>
+        </svg>
+        <h1>Masuk ke GPay</h1>
+        <p>Selamat datang kembali</p>
+      </div>
+      <form id="login-form" class="auth-form">
+        <div class="input-group">
+          <i class="fas fa-envelope"></i>
+          <input type="email" id="login-email" placeholder="Email" required autocomplete="email">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="login-password" placeholder="Kata Sandi" required autocomplete="current-password">
+          <button type="button" class="toggle-pass" onclick="togglePassword('login-password', this)"><i class="fas fa-eye"></i></button>
+        </div>
+        <button type="button" class="link-btn forgot-link" onclick="showPage('forgot')">Lupa kata sandi?</button>
+        <button type="submit" class="btn btn-primary btn-block ripple">
+          <span>Masuk</span>
+          <div class="btn-loader hidden"><div class="spinner-sm"></div></div>
+        </button>
+      </form>
+      <p class="auth-switch">Belum punya akun? <button type="button" class="link-btn" onclick="showPage('register')">Daftar</button></p>
+    </div>
+  </div>
+
+  <div id="page-register" class="page auth-page" data-page="register">
+    <div class="auth-container">
+      <div class="auth-header">
+        <button class="back-btn" onclick="showPage('login')"><i class="fas fa-arrow-left"></i></button>
+        <h1>Buat Akun</h1>
+        <p>Daftar untuk mulai menggunakan GPay</p>
+      </div>
+      <form id="register-form" class="auth-form">
+        <div class="input-group">
+          <i class="fas fa-user"></i>
+          <input type="text" id="reg-name" placeholder="Nama Lengkap" required autocomplete="name">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-envelope"></i>
+          <input type="email" id="reg-email" placeholder="Email" required autocomplete="email">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="reg-password" placeholder="Kata Sandi (min. 8 karakter)" required minlength="8" autocomplete="new-password">
+          <button type="button" class="toggle-pass" onclick="togglePassword('reg-password', this)"><i class="fas fa-eye"></i></button>
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="reg-confirm" placeholder="Konfirmasi Kata Sandi" required minlength="8" autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block ripple">
+          <span>Daftar</span>
+          <div class="btn-loader hidden"><div class="spinner-sm"></div></div>
+        </button>
+      </form>
+      <p class="auth-switch">Sudah punya akun? <button type="button" class="link-btn" onclick="showPage('login')">Masuk</button></p>
+    </div>
+  </div>
+
+  <div id="page-forgot" class="page auth-page" data-page="forgot">
+    <div class="auth-container">
+      <div class="auth-header">
+        <button class="back-btn" onclick="showPage('login')"><i class="fas fa-arrow-left"></i></button>
+        <h1>Reset Kata Sandi</h1>
+        <p>Masukkan email untuk menerima link reset</p>
+      </div>
+      <form id="forgot-form" class="auth-form">
+        <div class="input-group">
+          <i class="fas fa-envelope"></i>
+          <input type="email" id="forgot-email" placeholder="Email" required autocomplete="email">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block ripple">
+          <span>Kirim Link Reset</span>
+          <div class="btn-loader hidden"><div class="spinner-sm"></div></div>
+        </button>
+      </form>
+      <p class="auth-switch"><button type="button" class="link-btn" onclick="showPage('login')">Kembali ke Login</button></p>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="main-app" class="main-app hidden">
+
+    <!-- BERANDA / HOME -->
+    <div id="page-home" class="page main-page active" data-page="home">
+      <div class="page-scroll">
+        <!-- Top Bar -->
+        <div class="top-bar">
+          <div class="top-bar-left">
+            <div class="avatar-circle" id="home-avatar">U</div>
+            <div class="greeting">
+              <span class="greeting-text" id="greeting-text">Selamat Pagi</span>
+              <span class="greeting-name" id="greeting-name">User</span>
+            </div>
+          </div>
+          <div class="top-bar-right">
+            <button class="icon-btn ripple" onclick="showPage('messages')" id="mail-btn">
+              <i class="fas fa-envelope"></i>
+              <span class="badge hidden" id="mail-badge">0</span>
+            </button>
+            <button class="icon-btn ripple" onclick="showPage('notifications')">
+              <i class="fas fa-bell"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Balance Card -->
+        <div class="balance-card">
+          <div class="balance-card-bg"></div>
+          <div class="balance-top">
+            <span class="balance-label">Saldo GPay</span>
+            <button class="eye-toggle" id="eye-toggle" onclick="toggleBalance()">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          <div class="balance-amount" id="balance-display">
+            <span class="currency">G</span>
+            <span class="amount" id="balance-amount">0</span>
+          </div>
+          <div class="balance-sub">
+            <span>GPay+ </span>
+            <span id="gplus-display">G0</span>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <button class="quick-action ripple" onclick="showPage('topup')">
+            <div class="qa-icon"><i class="fas fa-plus"></i></div>
+            <span>Isi Saldo</span>
+          </button>
+          <button class="quick-action ripple" onclick="showPage('request-money')">
+            <div class="qa-icon"><i class="fas fa-hand-holding-dollar"></i></div>
+            <span>Minta</span>
+          </button>
+          <button class="quick-action ripple" onclick="showPage('send-money')">
+            <div class="qa-icon"><i class="fas fa-paper-plane"></i></div>
+            <span>Kirim</span>
+          </button>
+          <button class="quick-action ripple" onclick="showPage('messages')">
+            <div class="qa-icon"><i class="fas fa-comment-dots"></i></div>
+            <span>Pesan</span>
+          </button>
+        </div>
+
+        <!-- Promo Slider -->
+        <div class="promo-slider" id="promo-slider">
+          <div class="promo-track" id="promo-track">
+            <div class="promo-slide" style="background: linear-gradient(135deg, #1a9fff, #0066cc);">
+              <div class="promo-content">
+                <h3>Cashback 50%</h3>
+                <p>Beli pulsa & paket data hari ini</p>
+              </div>
+              <i class="fas fa-mobile-screen-button promo-icon"></i>
+            </div>
+            <div class="promo-slide" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+              <div class="promo-content">
+                <h3>G Kaget!</h3>
+                <p>Kirim kejutan ke teman</p>
+              </div>
+              <i class="fas fa-gift promo-icon"></i>
+            </div>
+            <div class="promo-slide" style="background: linear-gradient(135deg, #10b981, #059669);">
+              <div class="promo-content">
+                <h3>Rewards Harian</h3>
+                <p>Klaim G500 setiap hari</p>
+              </div>
+              <i class="fas fa-coins promo-icon"></i>
+            </div>
+          </div>
+          <div class="promo-dots" id="promo-dots"></div>
+        </div>
+
+        <!-- Services Grid -->
+        <div class="section-header">
+          <h3>Layanan</h3>
+        </div>
+        <div class="services-grid">
+          <button class="service-item ripple" onclick="showPage('pulsa')">
+            <div class="service-icon" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-mobile-screen-button"></i></div>
+            <span>Pulsa & Data</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('rewards')">
+            <div class="service-icon" style="background: #fef3c7; color: #f59e0b;"><i class="fas fa-trophy"></i></div>
+            <span>Rewards</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('bills')">
+            <div class="service-icon" style="background: #fce7f3; color: #ec4899;"><i class="fas fa-bolt"></i></div>
+            <span>Listrik</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('voucher')">
+            <div class="service-icon" style="background: #d1fae5; color: #10b981;"><i class="fas fa-tags"></i></div>
+            <span>Deals</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('games')">
+            <div class="service-icon" style="background: #ede9fe; color: #8b5cf6;"><i class="fas fa-gamepad"></i></div>
+            <span>Games</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('investasi')">
+            <div class="service-icon" style="background: #fef9c3; color: #ca8a04;"><i class="fas fa-chart-line"></i></div>
+            <span>Investasi</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('gkaget')">
+            <div class="service-icon" style="background: #fee2e2; color: #ef4444;"><i class="fas fa-gift"></i></div>
+            <span>G Kaget</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('all-services')">
+            <div class="service-icon" style="background: #f3f4f6; color: #6b7280;"><i class="fas fa-th-large"></i></div>
+            <span>Semua</span>
+          </button>
+        </div>
+
+        <!-- G Protection Banner -->
+        <div class="protection-banner ripple" onclick="showPage('protection')">
+          <div class="protection-left">
+            <div class="protection-icon"><i class="fas fa-shield-halved"></i></div>
+            <div>
+              <h4>G Protection</h4>
+              <p>Skor keamanan Anda</p>
+            </div>
+          </div>
+          <div class="protection-right">
+            <div class="protection-bar">
+              <div class="protection-fill" id="home-protection-fill" style="width: 20%"></div>
+            </div>
+            <span class="protection-score" id="home-protection-score">20%</span>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="section-header">
+          <h3>Aktivitas Terbaru</h3>
+          <button class="link-btn" onclick="switchTab('activity')">Lihat Semua</button>
+        </div>
+        <div class="activity-feed" id="home-activity">
+          <div class="empty-state">
+            <i class="fas fa-receipt"></i>
+            <p>Belum ada aktivitas</p>
+          </div>
+        </div>
+
+        <div class="page-bottom-space"></div>
+      </div>
+    </div>
+
+    <!-- AKTIVITAS / HISTORY -->
+    <div id="page-activity" class="page main-page" data-page="activity">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2>Aktivitas</h2>
+        </div>
+        <div class="search-bar">
+          <i class="fas fa-search"></i>
+          <input type="text" placeholder="Cari transaksi..." id="activity-search" oninput="filterTransactions()">
+        </div>
+        <div class="filter-chips" id="activity-filters">
+          <button class="chip active" data-filter="all" onclick="setActivityFilter('all', this)">Semua</button>
+          <button class="chip" data-filter="in" onclick="setActivityFilter('in', this)">Masuk</button>
+          <button class="chip" data-filter="out" onclick="setActivityFilter('out', this)">Keluar</button>
+          <button class="chip" data-filter="pending" onclick="setActivityFilter('pending', this)">Pending</button>
+          <button class="chip" data-filter="failed" onclick="setActivityFilter('failed', this)">Gagal</button>
+        </div>
+        <div class="transaction-list" id="transaction-list">
+          <div class="empty-state">
+            <i class="fas fa-receipt"></i>
+            <p>Belum ada transaksi</p>
+          </div>
+        </div>
+        <div class="page-bottom-space"></div>
+      </div>
+    </div>
+
+    <!-- QR / PAY -->
+    <div id="page-qr" class="page main-page" data-page="qr">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2>QR Pay</h2>
+        </div>
+        <div class="tab-bar">
+          <button class="tab-btn active" onclick="switchQRTab('myqr', this)">QR Saya</button>
+          <button class="tab-btn" onclick="switchQRTab('scan', this)">Scan & Pay</button>
+        </div>
+        <div id="qr-myqr" class="qr-section">
+          <div class="qr-card">
+            <div class="qr-frame">
+              <canvas id="qr-canvas" width="200" height="200"></canvas>
+            </div>
+            <p class="qr-name" id="qr-name">User</p>
+            <p class="qr-hint">Tunjukkan QR ini untuk menerima pembayaran</p>
+          </div>
+        </div>
+        <div id="qr-scan" class="qr-section hidden">
+          <div class="scan-form">
+            <div class="input-group">
+              <i class="fas fa-user"></i>
+              <input type="text" id="scan-uid" placeholder="Masukkan UID atau Email penerima">
+            </div>
+            <div class="input-group">
+              <i class="fas fa-money-bill"></i>
+              <input type="number" id="scan-amount" placeholder="Jumlah pembayaran" min="1">
+            </div>
+            <div class="input-group">
+              <i class="fas fa-sticky-note"></i>
+              <input type="text" id="scan-note" placeholder="Catatan (opsional)">
+            </div>
+            <button class="btn btn-primary btn-block ripple" onclick="processScanPay()">
+              <span>Bayar</span>
+              <div class="btn-loader hidden"><div class="spinner-sm"></div></div>
+            </button>
+          </div>
+        </div>
+        <div class="page-bottom-space"></div>
+      </div>
+    </div>
+
+    <!-- DOMPET / WALLET -->
+    <div id="page-wallet" class="page main-page" data-page="wallet">
+      <div class="page-scroll">
+        <div class="page-header">
+          <h2>Dompet</h2>
+        </div>
+        <div class="wallet-balance-card">
+          <div class="wbc-top">
+            <span>Saldo Tersedia</span>
+            <h2 id="wallet-balance">G0</h2>
+          </div>
+          <div class="wbc-actions">
+            <button class="btn btn-sm btn-white ripple" onclick="showPage('topup')"><i class="fas fa-plus"></i> Isi Saldo</button>
+            <button class="btn btn-sm btn-white ripple" onclick="showPage('send-money')"><i class="fas fa-paper-plane"></i> Kirim</button>
+          </div>
+        </div>
+        <div class="section-header">
+          <h3>Metode Pembayaran</h3>
+        </div>
+        <div class="payment-methods" id="payment-methods">
+          <div class="payment-method">
+            <div class="pm-icon"><i class="fas fa-wallet"></i></div>
+            <div class="pm-info">
+              <span class="pm-name">GPay Wallet</span>
+              <span class="pm-desc">Saldo utama</span>
+            </div>
+            <i class="fas fa-check-circle pm-check"></i>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-block ripple" onclick="showModal('add-card-modal')">
+          <i class="fas fa-plus"></i> Tambah Kartu
+        </button>
+        <div class="section-header" style="margin-top: 24px;">
+          <h3>Voucher & Tiket</h3>
+        </div>
+        <div id="wallet-vouchers" class="voucher-list">
+          <div class="empty-state small">
+            <i class="fas fa-ticket"></i>
+            <p>Belum ada voucher</p>
+          </div>
+        </div>
+        <div class="page-bottom-space"></div>
+      </div>
+    </div>
+
+    <!-- SAYA / PROFILE -->
+    <div id="page-profile" class="page main-page" data-page="profile">
+      <div class="page-scroll">
+        <div class="profile-header">
+          <div class="profile-avatar" id="profile-avatar">U</div>
+          <h2 id="profile-name">User</h2>
+          <p id="profile-phone">-</p>
+          <button class="btn btn-sm btn-outline ripple" onclick="showPage('qr');switchQRTab('myqr', document.querySelector('.tab-btn'))">
+            <i class="fas fa-qrcode"></i> QR Saya
+          </button>
+        </div>
+
+        <div class="profile-summary">
+          <div class="ps-item" onclick="showPage('wallet')">
+            <span class="ps-value" id="ps-saldo">G0</span>
+            <span class="ps-label">Saldo</span>
+          </div>
+          <div class="ps-item">
+            <span class="ps-value" id="ps-gplus">G0</span>
+            <span class="ps-label">GPay+</span>
+          </div>
+          <div class="ps-item">
+            <span class="ps-value">0</span>
+            <span class="ps-label">Goals</span>
+          </div>
+          <div class="ps-item">
+            <span class="ps-value">0</span>
+            <span class="ps-label">Keluarga</span>
+          </div>
+          <div class="ps-item">
+            <span class="ps-value">0g</span>
+            <span class="ps-label">eEMAS</span>
+          </div>
+          <div class="ps-item">
+            <span class="ps-value">0</span>
+            <span class="ps-label">Rekan G</span>
+          </div>
+        </div>
+
+        <div class="income-expense-cards">
+          <div class="ie-card income">
+            <span class="ie-label">Pemasukan</span>
+            <span class="ie-amount" id="ie-income">G0</span>
+          </div>
+          <div class="ie-card expense">
+            <span class="ie-label">Pengeluaran</span>
+            <span class="ie-amount" id="ie-expense">G0</span>
+          </div>
+        </div>
+
+        <div class="profile-menu">
+          <button class="menu-item ripple" onclick="showPage('bills')">
+            <i class="fas fa-file-invoice"></i>
+            <span>My Bills</span>
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          <button class="menu-item ripple" onclick="showPage('voucher')">
+            <i class="fas fa-ticket"></i>
+            <span>Voucher Promo</span>
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          <button class="menu-item ripple" onclick="showPage('settings')">
+            <i class="fas fa-cog"></i>
+            <span>Pengaturan</span>
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          <button class="menu-item ripple" onclick="showPage('info')">
+            <i class="fas fa-info-circle"></i>
+            <span>Info Umum</span>
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+        <p class="version-text">GPay v3.0.0</p>
+        <div class="page-bottom-space"></div>
+      </div>
+    </div>
+
+    <!-- SUB PAGES -->
+
+    <!-- TOP UP -->
+    <div id="page-topup" class="page sub-page" data-page="topup">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Isi Saldo</h2>
+        </div>
+        <div class="topup-form">
+          <div class="input-group large">
+            <span class="currency-prefix">G</span>
+            <input type="number" id="topup-amount" placeholder="0" min="1000">
+          </div>
+          <div class="quick-amounts">
+            <button class="quick-amt ripple" onclick="setTopupAmount(10000)">10rb</button>
+            <button class="quick-amt ripple" onclick="setTopupAmount(25000)">25rb</button>
+            <button class="quick-amt ripple" onclick="setTopupAmount(50000)">50rb</button>
+            <button class="quick-amt ripple" onclick="setTopupAmount(100000)">100rb</button>
+          </div>
+          <button class="btn btn-primary btn-block ripple" onclick="submitTopup()">
+            <span>Ajukan Isi Saldo</span>
+            <div class="btn-loader hidden"><div class="spinner-sm"></div></div>
+          </button>
+          <div class="topup-info">
+            <i class="fas fa-info-circle"></i>
+            <p>Permintaan isi saldo akan diproses oleh admin. Saldo akan ditambahkan setelah disetujui.</p>
+          </div>
+        </div>
+        <div class="section-header"><h3>Riwayat Permintaan</h3></div>
+        <div id="topup-history" class="topup-list">
+          <div class="empty-state small">
+            <i class="fas fa-clock"></i>
+            <p>Belum ada permintaan</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEND MONEY -->
+    <div id="page-send-money" class="page sub-page" data-page="send-money">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Kirim Uang</h2>
+        </div>
+        <div class="send-form">
+          <div class="input-group">
+            <i class="fas fa-search"></i>
+            <input type="text" id="send-search" placeholder="Cari email atau nomor HP" oninput="searchRecipient()">
+          </div>
+          <div id="recipient-result" class="recipient-result hidden"></div>
+          <div class="input-group large">
+            <span class="currency-prefix">G</span>
+            <input type="number" id="send-amount" placeholder="0" min="100">
+          </div>
+          <div class="input-group">
+            <i class="fas fa-sticky-note"></i>
+            <input type="text" id="send-note" placeholder="Catatan (opsional)">
+          </div>
+          <button class="btn btn-primary btn-block ripple" onclick="processSendMoney()">
+            <span>Kirim</span>
+            <div class="btn-loader hidden"><div class="spinner-sm"></div></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REQUEST MONEY -->
+    <div id="page-request-money" class="page sub-page" data-page="request-money">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Minta Uang</h2>
+        </div>
+        <div class="send-form">
+          <div class="input-group">
+            <i class="fas fa-search"></i>
+            <input type="text" id="request-search" placeholder="Cari email atau nomor HP" oninput="searchRequestRecipient()">
+          </div>
+          <div id="request-recipient-result" class="recipient-result hidden"></div>
+          <div class="input-group large">
+            <span class="currency-prefix">G</span>
+            <input type="number" id="request-amount" placeholder="0" min="100">
+          </div>
+          <div class="input-group">
+            <i class="fas fa-sticky-note"></i>
+            <input type="text" id="request-note" placeholder="Catatan (opsional)">
+          </div>
+          <button class="btn btn-primary btn-block ripple" onclick="processRequestMoney()">
+            <span>Minta</span>
+            <div class="btn-loader hidden"><div class="spinner-sm"></div></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div id="page-messages" class="page sub-page" data-page="messages">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Pesan</h2>
+        </div>
+        <div id="messages-list" class="messages-list">
+          <div class="empty-state">
+            <i class="fas fa-envelope-open"></i>
+            <p>Belum ada pesan</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div id="page-notifications" class="page sub-page" data-page="notifications">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Notifikasi</h2>
+        </div>
+        <div id="notifications-list" class="messages-list">
+          <div class="empty-state">
+            <i class="fas fa-bell-slash"></i>
+            <p>Belum ada notifikasi</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PULSA & DATA -->
+    <div id="page-pulsa" class="page sub-page" data-page="pulsa">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Pulsa & Data</h2>
+        </div>
+        <div class="pulsa-form">
+          <div class="input-group">
+            <i class="fas fa-phone"></i>
+            <input type="tel" id="pulsa-phone" placeholder="Nomor HP" maxlength="15">
+          </div>
+          <div class="provider-chips">
+            <button class="chip" onclick="selectProvider('Telkomsel', this)">Telkomsel</button>
+            <button class="chip" onclick="selectProvider('Indosat', this)">Indosat</button>
+            <button class="chip" onclick="selectProvider('XL', this)">XL</button>
+            <button class="chip" onclick="selectProvider('Tri', this)">Tri</button>
+            <button class="chip" onclick="selectProvider('Smartfren', this)">Smartfren</button>
+          </div>
+          <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchPulsaTab('pulsa', this)">Pulsa</button>
+            <button class="tab-btn" onclick="switchPulsaTab('data', this)">Paket Data</button>
+          </div>
+          <div id="pulsa-packages" class="packages-grid">
+            <button class="package-card ripple" onclick="selectPackage(5000, 'Pulsa 5rb', 5500)">
+              <span class="pkg-name">5.000</span>
+              <span class="pkg-price">G5.500</span>
+            </button>
+            <button class="package-card ripple" onclick="selectPackage(10000, 'Pulsa 10rb', 11000)">
+              <span class="pkg-name">10.000</span>
+              <span class="pkg-price">G11.000</span>
+            </button>
+            <button class="package-card ripple" onclick="selectPackage(15000, 'Pulsa 15rb', 16000)">
+              <span class="pkg-name">15.000</span>
+              <span class="pkg-price">G16.000</span>
+            </button>
+            <button class="package-card ripple" onclick="selectPackage(25000, 'Pulsa 25rb', 26000)">
+              <span class="pkg-name">25.000</span>
+              <span class="pkg-price">G26.000</span>
+            </button>
+            <button class="package-card ripple" onclick="selectPackage(50000, 'Pulsa 50rb', 51000)">
+              <span class="pkg-name">50.000</span>
+              <span class="pkg-price">G51.000</span>
+            </button>
+            <button class="package-card ripple" onclick="selectPackage(100000, 'Pulsa 100rb', 100500)">
+              <span class="pkg-name">100.000</span>
+              <span class="pkg-price">G100.500</span>
+            </button>
+          </div>
+          <div id="data-packages" class="packages-grid hidden">
+            <button class="package-card ripple" onclick="selectPackage(1000, 'Data 1GB', 12000)">
+              <span class="pkg-name">1 GB</span>
+              <span class="pkg-price">G12.000</span>
+            </button>
+            <button class="package-card ripple" onclick="selectPackage(3000, 'Data 3GB', 30000)">
+              <span class="pkg-name">3 GB</span>
+              <span class="pkg-price">G30.000</span>
+            </button>
+            <button class="package-card ripple" onclick="selectPackage(5000, 'Data 5GB', 45000)">
+              <span class="pkg-name">5 GB</span>
+              <span class="pkg-price">G45.000</span>
+            </button>
+            <button class="package-card ripple" onclick="selectPackage(10000, 'Data 10GB', 75000)">
+              <span class="pkg-name">10 GB</span>
+              <span class="pkg-price">G75.000</span>
+            </button>
+            <button class="package-card ripple" onclick="selectPackage(15000, 'Data 15GB', 100000)">
+              <span class="pkg-name">15 GB</span>
+              <span class="pkg-price">G100.000</span>
+            </button>
+            <button class="package-card ripple" onclick="selectPackage(40000, 'Data 40GB', 200000)">
+              <span class="pkg-name">40 GB</span>
+              <span class="pkg-price">G200.000</span>
+            </button>
+          </div>
+          <div class="cashback-note">
+            <i class="fas fa-percent"></i>
+            <span>Cashback 5% untuk setiap pembelian!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REWARDS -->
+    <div id="page-rewards" class="page sub-page" data-page="rewards">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Rewards</h2>
+        </div>
+        <div class="checkin-card" id="checkin-card">
+          <div class="checkin-icon"><i class="fas fa-calendar-check"></i></div>
+          <div class="checkin-info">
+            <h3>Check-in Harian</h3>
+            <p>Klaim G500 setiap hari</p>
+          </div>
+          <button class="btn btn-sm btn-primary ripple" id="checkin-btn" onclick="dailyCheckin()">Klaim</button>
+        </div>
+        <div class="section-header"><h3>Kode Promo</h3></div>
+        <div id="rewards-promos" class="promo-list">
+          <div class="empty-state small">
+            <i class="fas fa-ticket"></i>
+            <p>Belum ada promo</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- G PROTECTION -->
+    <div id="page-protection" class="page sub-page" data-page="protection">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>G Protection</h2>
+        </div>
+        <div class="protection-card-big">
+          <div class="protection-circle" id="protection-circle">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="54" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+              <circle cx="60" cy="60" r="54" fill="none" stroke="url(#protGrad)" stroke-width="8" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="271.434" id="protection-arc"/>
+              <defs><linearGradient id="protGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#1a9fff"/><stop offset="100%" stop-color="#0066cc"/></linearGradient></defs>
+            </svg>
+            <span class="protection-percent" id="protection-percent">20%</span>
+          </div>
+          <h3>Skor Keamanan</h3>
+        </div>
+        <div class="protection-checklist">
+          <div class="protection-item" id="prot-pin">
+            <div class="pi-icon"><i class="fas fa-lock"></i></div>
+            <div class="pi-info">
+              <span>Atur PIN</span>
+              <small>PIN 6 digit untuk transaksi</small>
+            </div>
+            <button class="btn btn-sm btn-primary ripple" onclick="showModal('set-pin-modal')">Atur</button>
+          </div>
+          <div class="protection-item" id="prot-email">
+            <div class="pi-icon"><i class="fas fa-envelope"></i></div>
+            <div class="pi-info">
+              <span>Verifikasi Email</span>
+              <small id="email-verify-status">Belum diverifikasi</small>
+            </div>
+            <button class="btn btn-sm btn-outline ripple" id="verify-email-btn" onclick="resendVerification()">Kirim</button>
+          </div>
+          <div class="protection-item" id="prot-phone">
+            <div class="pi-icon"><i class="fas fa-phone"></i></div>
+            <div class="pi-info">
+              <span>Verifikasi HP</span>
+              <small>Verifikasi nomor telepon</small>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="prot-phone-toggle" onchange="togglePhoneVerify()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="protection-item" id="prot-bio">
+            <div class="pi-icon"><i class="fas fa-fingerprint"></i></div>
+            <div class="pi-info">
+              <span>Biometrik</span>
+              <small>Aktifkan sidik jari / wajah</small>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="prot-bio-toggle" onchange="toggleBiometric()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="protection-item" id="prot-pass">
+            <div class="pi-icon"><i class="fas fa-key"></i></div>
+            <div class="pi-info">
+              <span>Password Kuat</span>
+              <small id="pass-strength-text">Minimal 8 karakter</small>
+            </div>
+            <span class="pi-badge" id="pass-badge"><i class="fas fa-check"></i></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BILLS -->
+    <div id="page-bills" class="page sub-page" data-page="bills">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>My Bills</h2>
+        </div>
+        <div class="filter-chips">
+          <button class="chip active" onclick="filterBills('all', this)">Semua</button>
+          <button class="chip" onclick="filterBills('listrik', this)">Listrik</button>
+          <button class="chip" onclick="filterBills('air', this)">Air</button>
+          <button class="chip" onclick="filterBills('internet', this)">Internet</button>
+          <button class="chip" onclick="filterBills('bpjs', this)">BPJS</button>
+        </div>
+        <div id="bills-list" class="bills-list">
+          <div class="empty-state">
+            <i class="fas fa-file-invoice"></i>
+            <p>Belum ada tagihan</p>
+          </div>
+        </div>
+        <button class="fab ripple" onclick="showModal('add-bill-modal')">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- VOUCHER PROMO -->
+    <div id="page-voucher" class="page sub-page" data-page="voucher">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Voucher Promo</h2>
+        </div>
+        <div class="promo-input">
+          <div class="input-group">
+            <i class="fas fa-tag"></i>
+            <input type="text" id="promo-code-input" placeholder="Masukkan kode promo" style="text-transform: uppercase;">
+          </div>
+          <button class="btn btn-primary ripple" onclick="redeemPromoCode()">Tukar</button>
+        </div>
+        <div class="section-header"><h3>Promo Tersedia</h3></div>
+        <div id="available-vouchers" class="voucher-list">
+          <div class="empty-state small">
+            <i class="fas fa-ticket"></i>
+            <p>Belum ada promo</p>
+          </div>
+        </div>
+        <div class="section-header"><h3>Voucher Saya</h3></div>
+        <div id="my-vouchers" class="voucher-list">
+          <div class="empty-state small">
+            <i class="fas fa-ticket"></i>
+            <p>Belum ada voucher</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="page-settings" class="page sub-page" data-page="settings">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Pengaturan</h2>
+        </div>
+
+        <div class="settings-section">
+          <h4>Profil</h4>
+          <div class="input-group">
+            <i class="fas fa-user"></i>
+            <input type="text" id="settings-name" placeholder="Nama Lengkap">
+          </div>
+          <div class="input-group">
+            <i class="fas fa-envelope"></i>
+            <input type="email" id="settings-email" placeholder="Email" readonly>
+          </div>
+          <div class="input-group">
+            <i class="fas fa-phone"></i>
+            <input type="tel" id="settings-phone" placeholder="Nomor HP">
+          </div>
+          <button class="btn btn-primary btn-block ripple" onclick="saveProfile()">Simpan Profil</button>
+        </div>
+
+        <div class="settings-section">
+          <h4>Keamanan</h4>
+          <button class="menu-item ripple" onclick="showModal('set-pin-modal')">
+            <i class="fas fa-lock"></i><span>Ubah PIN</span><i class="fas fa-chevron-right"></i>
+          </button>
+          <button class="menu-item ripple" onclick="showModal('change-password-modal')">
+            <i class="fas fa-key"></i><span>Ubah Password</span><i class="fas fa-chevron-right"></i>
+          </button>
+          <div class="menu-item">
+            <i class="fas fa-fingerprint"></i><span>Biometrik</span>
+            <label class="toggle-switch"><input type="checkbox" id="settings-bio-toggle" onchange="toggleBiometric()"><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h4>Notifikasi</h4>
+          <div class="menu-item">
+            <i class="fas fa-bell"></i><span>Push Notification</span>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="menu-item">
+            <i class="fas fa-bullhorn"></i><span>Promo</span>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="menu-item">
+            <i class="fas fa-receipt"></i><span>Transaksi</span>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h4>Verifikasi</h4>
+          <div class="menu-item" id="settings-email-verify">
+            <i class="fas fa-envelope"></i>
+            <span>Email</span>
+            <span class="verify-badge" id="settings-email-badge">Belum</span>
+          </div>
+          <div class="menu-item">
+            <i class="fas fa-phone"></i>
+            <span>Nomor HP</span>
+            <label class="toggle-switch"><input type="checkbox" id="settings-phone-toggle" onchange="togglePhoneVerify()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="menu-item">
+            <i class="fas fa-id-card"></i>
+            <span>KTP</span>
+            <span class="verify-badge pending">Belum</span>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h4>Tampilan</h4>
+          <div class="menu-item">
+            <i class="fas fa-moon"></i><span>Mode Gelap</span>
+            <label class="toggle-switch"><input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="menu-item">
+            <i class="fas fa-language"></i><span>Bahasa</span>
+            <select id="lang-select" class="mini-select">
+              <option value="id">Indonesia</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h4>Tentang</h4>
+          <div class="menu-item"><i class="fas fa-code-branch"></i><span>Versi</span><span class="menu-meta">3.0.0</span></div>
+          <button class="menu-item ripple" onclick="showPage('info')"><i class="fas fa-file-lines"></i><span>Syarat & Ketentuan</span><i class="fas fa-chevron-right"></i></button>
+          <button class="menu-item ripple" onclick="showPage('info')"><i class="fas fa-shield-halved"></i><span>Kebijakan Privasi</span><i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <button class="btn btn-danger btn-block ripple" onclick="doLogout()" style="margin-top:16px;">
+          <i class="fas fa-sign-out-alt"></i> Keluar
+        </button>
+        <div class="page-bottom-space"></div>
+      </div>
+    </div>
+
+    <!-- INFO UMUM -->
+    <div id="page-info" class="page sub-page" data-page="info">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Info Umum</h2>
+        </div>
+        <div class="info-section">
+          <h3>Tentang GPay</h3>
+          <p>GPay adalah dompet digital terpercaya yang mempermudah transaksi keuangan Anda. Kirim uang, bayar tagihan, beli pulsa, dan nikmati berbagai promo menarik.</p>
+        </div>
+        <div class="info-section">
+          <h3>FAQ</h3>
+          <div class="faq-list">
+            <div class="faq-item">
+              <button class="faq-question ripple" onclick="toggleFaq(this)">
+                <span>Bagaimana cara isi saldo?</span>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <div class="faq-answer">
+                <p>Anda dapat mengisi saldo melalui menu "Isi Saldo" di beranda. Pilih nominal dan ajukan permintaan. Admin akan memproses permintaan Anda.</p>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question ripple" onclick="toggleFaq(this)">
+                <span>Apakah GPay aman?</span>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <div class="faq-answer">
+                <p>Ya, GPay menggunakan Firebase Authentication dan enkripsi data untuk menjaga keamanan akun Anda. Aktifkan G Protection untuk keamanan maksimal.</p>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question ripple" onclick="toggleFaq(this)">
+                <span>Bagaimana cara verifikasi email?</span>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <div class="faq-answer">
+                <p>Setelah mendaftar, cek inbox email Anda untuk link verifikasi. Anda juga bisa mengirim ulang dari menu Pengaturan > Verifikasi.</p>
+              </div>
+            </div>
+            <div class="faq-item">
+              <button class="faq-question ripple" onclick="toggleFaq(this)">
+                <span>Berapa lama proses isi saldo?</span>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <div class="faq-answer">
+                <p>Proses isi saldo bergantung pada admin. Biasanya diproses dalam 1x24 jam.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="info-section">
+          <h3>Kontak</h3>
+          <div class="contact-list">
+            <div class="contact-item"><i class="fas fa-envelope"></i><span>support@gpay.id</span></div>
+            <div class="contact-item"><i class="fas fa-phone"></i><span>021-1234-5678</span></div>
+            <div class="contact-item"><i class="fas fa-clock"></i><span>Senin - Jumat, 08:00 - 17:00 WIB</span></div>
+          </div>
+        </div>
+        <div class="info-section">
+          <h3>Syarat & Ketentuan</h3>
+          <p>Dengan menggunakan GPay, Anda menyetujui syarat dan ketentuan yang berlaku. Layanan ini disediakan "sebagaimana adanya" dan kami tidak bertanggung jawab atas kerugian yang timbul dari penggunaan layanan.</p>
+        </div>
+        <div class="info-section">
+          <h3>Kebijakan Privasi</h3>
+          <p>Kami menjaga privasi data Anda. Informasi pribadi hanya digunakan untuk keperluan layanan GPay dan tidak dibagikan kepada pihak ketiga tanpa persetujuan Anda.</p>
+        </div>
+        <div class="page-bottom-space"></div>
+      </div>
+    </div>
+
+    <!-- GAMES (placeholder) -->
+    <div id="page-games" class="page sub-page" data-page="games">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Games</h2>
+        </div>
+        <div class="coming-soon">
+          <i class="fas fa-gamepad"></i>
+          <h3>Segera Hadir</h3>
+          <p>Fitur Games sedang dalam pengembangan</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVESTASI (placeholder) -->
+    <div id="page-investasi" class="page sub-page" data-page="investasi">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Investasi</h2>
+        </div>
+        <div class="coming-soon">
+          <i class="fas fa-chart-line"></i>
+          <h3>Segera Hadir</h3>
+          <p>Fitur Investasi sedang dalam pengembangan</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- G KAGET -->
+    <div id="page-gkaget" class="page sub-page" data-page="gkaget">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>G Kaget</h2>
+        </div>
+        <div class="coming-soon">
+          <i class="fas fa-gift"></i>
+          <h3>Segera Hadir</h3>
+          <p>Kirim kejutan ke teman Anda</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALL SERVICES -->
+    <div id="page-all-services" class="page sub-page" data-page="all-services">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Semua Layanan</h2>
+        </div>
+        <div class="services-grid full">
+          <button class="service-item ripple" onclick="showPage('pulsa')">
+            <div class="service-icon" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-mobile-screen-button"></i></div>
+            <span>Pulsa & Data</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('rewards')">
+            <div class="service-icon" style="background: #fef3c7; color: #f59e0b;"><i class="fas fa-trophy"></i></div>
+            <span>Rewards</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('bills')">
+            <div class="service-icon" style="background: #fce7f3; color: #ec4899;"><i class="fas fa-bolt"></i></div>
+            <span>Listrik</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('voucher')">
+            <div class="service-icon" style="background: #d1fae5; color: #10b981;"><i class="fas fa-tags"></i></div>
+            <span>Deals</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('games')">
+            <div class="service-icon" style="background: #ede9fe; color: #8b5cf6;"><i class="fas fa-gamepad"></i></div>
+            <span>Games</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('investasi')">
+            <div class="service-icon" style="background: #fef9c3; color: #ca8a04;"><i class="fas fa-chart-line"></i></div>
+            <span>Investasi</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('gkaget')">
+            <div class="service-icon" style="background: #fee2e2; color: #ef4444;"><i class="fas fa-gift"></i></div>
+            <span>G Kaget</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('protection')">
+            <div class="service-icon" style="background: #e0f2fe; color: #0284c7;"><i class="fas fa-shield-halved"></i></div>
+            <span>G Protection</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('send-money')">
+            <div class="service-icon" style="background: #f0fdf4; color: #16a34a;"><i class="fas fa-paper-plane"></i></div>
+            <span>Kirim Uang</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('request-money')">
+            <div class="service-icon" style="background: #fdf4ff; color: #c026d3;"><i class="fas fa-hand-holding-dollar"></i></div>
+            <span>Minta Uang</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('topup')">
+            <div class="service-icon" style="background: #fff7ed; color: #ea580c;"><i class="fas fa-plus-circle"></i></div>
+            <span>Isi Saldo</span>
+          </button>
+          <button class="service-item ripple" onclick="showPage('bills')">
+            <div class="service-icon" style="background: #f5f5f4; color: #78716c;"><i class="fas fa-file-invoice"></i></div>
+            <span>Tagihan</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="nav-item active" onclick="switchTab('home')" data-tab="home">
+        <i class="fas fa-home"></i>
+        <span>Beranda</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('activity')" data-tab="activity">
+        <i class="fas fa-clock-rotate-left"></i>
+        <span>Aktivitas</span>
+      </button>
+      <button class="nav-item nav-qr" onclick="switchTab('qr')" data-tab="qr">
+        <div class="qr-btn-circle">
+          <i class="fas fa-qrcode"></i>
+        </div>
+        <span>PAY</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('wallet')" data-tab="wallet">
+        <i class="fas fa-wallet"></i>
+        <span>Dompet</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('profile')" data-tab="profile">
+        <i class="fas fa-user"></i>
+        <span>Saya</span>
+      </button>
+    </nav>
+  </div><!-- /main-app -->
+
+  <!-- MODALS -->
+
+  <!-- Email Verification Modal -->
+  <div class="modal-overlay" id="verify-email-modal">
+    <div class="modal-content slide-up">
+      <div class="modal-header">
+        <h3>Verifikasi Email</h3>
+        <button class="modal-close" onclick="hideModal('verify-email-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body center">
+        <div class="modal-icon warn"><i class="fas fa-envelope-circle-exclamation"></i></div>
+        <p>Verifikasi email Anda untuk melakukan transaksi</p>
+        <button class="btn btn-primary btn-block ripple" onclick="resendVerification()">Kirim Ulang Email Verifikasi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Set PIN Modal -->
+  <div class="modal-overlay" id="set-pin-modal">
+    <div class="modal-content slide-up">
+      <div class="modal-header">
+        <h3>Atur PIN</h3>
+        <button class="modal-close" onclick="hideModal('set-pin-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <p>Masukkan PIN 6 digit</p>
+        <div class="pin-input-group">
+          <input type="password" maxlength="1" class="pin-input" oninput="pinNext(this)" onkeydown="pinPrev(event, this)">
+          <input type="password" maxlength="1" class="pin-input" oninput="pinNext(this)" onkeydown="pinPrev(event, this)">
+          <input type="password" maxlength="1" class="pin-input" oninput="pinNext(this)" onkeydown="pinPrev(event, this)">
+          <input type="password" maxlength="1" class="pin-input" oninput="pinNext(this)" onkeydown="pinPrev(event, this)">
+          <input type="password" maxlength="1" class="pin-input" oninput="pinNext(this)" onkeydown="pinPrev(event, this)">
+          <input type="password" maxlength="1" class="pin-input" oninput="pinNext(this)" onkeydown="pinPrev(event, this)">
+        </div>
+        <button class="btn btn-primary btn-block ripple" onclick="savePin()" style="margin-top:16px;">Simpan PIN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div class="modal-overlay" id="change-password-modal">
+    <div class="modal-content slide-up">
+      <div class="modal-header">
+        <h3>Ubah Password</h3>
+        <button class="modal-close" onclick="hideModal('change-password-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="old-password" placeholder="Password Lama">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="new-password" placeholder="Password Baru (min 8 karakter)" minlength="8">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="confirm-new-password" placeholder="Konfirmasi Password Baru">
+        </div>
+        <button class="btn btn-primary btn-block ripple" onclick="changePassword()">Ubah Password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Card Modal -->
+  <div class="modal-overlay" id="add-card-modal">
+    <div class="modal-content slide-up">
+      <div class="modal-header">
+        <h3>Tambah Kartu</h3>
+        <button class="modal-close" onclick="hideModal('add-card-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <i class="fas fa-credit-card"></i>
+          <input type="text" id="card-number" placeholder="Nomor Kartu" maxlength="19">
+        </div>
+        <div class="input-row">
+          <div class="input-group">
+            <i class="fas fa-calendar"></i>
+            <input type="text" id="card-exp" placeholder="MM/YY" maxlength="5">
+          </div>
+          <div class="input-group">
+            <i class="fas fa-lock"></i>
+            <input type="text" id="card-cvv" placeholder="CVV" maxlength="4">
+          </div>
+        </div>
+        <div class="input-group">
+          <i class="fas fa-user"></i>
+          <input type="text" id="card-name" placeholder="Nama di Kartu">
+        </div>
+        <button class="btn btn-primary btn-block ripple" onclick="addCard()">Tambah Kartu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Bill Modal -->
+  <div class="modal-overlay" id="add-bill-modal">
+    <div class="modal-content slide-up">
+      <div class="modal-header">
+        <h3>Tambah Tagihan</h3>
+        <button class="modal-close" onclick="hideModal('add-bill-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <i class="fas fa-list"></i>
+          <select id="bill-category">
+            <option value="">Pilih Kategori</option>
+            <option value="listrik">Listrik</option>
+            <option value="air">Air</option>
+            <option value="internet">Internet</option>
+            <option value="bpjs">BPJS</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <i class="fas fa-hashtag"></i>
+          <input type="text" id="bill-account" placeholder="Nomor Rekening/ID Pelanggan">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-user"></i>
+          <input type="text" id="bill-name" placeholder="Nama">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-money-bill"></i>
+          <input type="number" id="bill-amount" placeholder="Jumlah Tagihan" min="1000">
+        </div>
+        <button class="btn btn-primary btn-block ripple" onclick="addBill()">Tambah Tagihan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transaction Detail Modal -->
+  <div class="modal-overlay" id="tx-detail-modal">
+    <div class="modal-content slide-up">
+      <div class="modal-header">
+        <h3>Detail Transaksi</h3>
+        <button class="modal-close" onclick="hideModal('tx-detail-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="tx-detail-body">
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Transaction Modal -->
+  <div class="modal-overlay" id="confirm-tx-modal">
+    <div class="modal-content slide-up">
+      <div class="modal-header">
+        <h3 id="confirm-tx-title">Konfirmasi</h3>
+        <button class="modal-close" onclick="hideModal('confirm-tx-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="confirm-tx-body">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline ripple" onclick="hideModal('confirm-tx-modal')">Batal</button>
+        <button class="btn btn-primary ripple" id="confirm-tx-btn" onclick="">Konfirmasi</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+</div><!-- /app-frame -->
+
+<!-- Toast Container -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Hidden footer link -->
+<footer style="display:none;">
+  <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">Created with Perplexity Computer</a>
+</footer>
+
+<script src="app.js"></script>
+<script data-pplx-inline-edit>
+(function(){
+  if(window===window.top)return;
+  function inlineAll(orig,clone){
+    if(orig.nodeType!==1)return;
+    try{
+      var cs=getComputedStyle(orig);
+      var t='';
+      for(var i=0;i<cs.length;i++){t+=cs[i]+':'+cs.getPropertyValue(cs[i])+';';}
+      clone.style.cssText=t;
+    }catch(e){}
+    var oc=orig.children,cc=clone.children;
+    for(var j=0;j<oc.length&&j<cc.length;j++){inlineAll(oc[j],cc[j]);}
+  }
+  function stripExternal(clone){
+    var imgs=clone.querySelectorAll('img');
+    for(var i=0;i<imgs.length;i++){
+      var s=imgs[i].getAttribute('src');
+      if(s&&!s.startsWith('data:'))imgs[i].removeAttribute('src');
+    }
+    var all=clone.querySelectorAll('*');
+    for(var i=0;i<all.length;i++){
+      var st=all[i].style.cssText;
+      if(st&&st.indexOf('url(')>=0){
+        all[i].style.cssText=st.replace(/url\(["']?(?!data:)[^)"']*["']?\)/gi,'none');
+      }
+    }
+  }
+  window.addEventListener('message',function(e){
+    if(!e.data||e.data.type!=='INLINE_EDIT_CAPTURE_REQUEST')return;
+    var scrollX=window.scrollX||window.pageXOffset||0;
+    var scrollY=window.scrollY||window.pageYOffset||0;
+    var w=window.innerWidth,h=window.innerHeight;
+    try{
+      var clone=document.documentElement.cloneNode(true);
+      var rm=clone.querySelectorAll('script,link[rel="stylesheet"],style');
+      for(var i=0;i<rm.length;i++){rm[i].remove();}
+      inlineAll(document.documentElement,clone);
+      stripExternal(clone);
+      var html=new XMLSerializer().serializeToString(clone);
+      var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'">'
+        +'<foreignObject width="100%" height="100%">'
+        +'<div xmlns="http://www.w3.org/1999/xhtml" style="width:'+w+'px;height:'+h+'px;overflow:hidden">'
+        +'<div style="transform:translate(-'+scrollX+'px,-'+scrollY+'px);transform-origin:top left">'
+        +html+'</div></div></foreignObject></svg>';
+      var svgUrl='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+      var img=new Image();
+      img.onload=function(){
+        var c=document.createElement('canvas');c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0);
+        window.parent.postMessage({type:'INLINE_EDIT_SCREENSHOT_RESULT',dataUrl:c.toDataURL('image/png'),scrollX:scrollX,scrollY:scrollY},'*');
+      };
+      img.onerror=function(){
+        window.parent.postMessage({type:'INLINE_EDIT_SCREENSHOT_RESULT',dataUrl:null,scrollX:scrollX,scrollY:scrollY},'*');
+      };
+      img.src=svgUrl;
+    }catch(err){
+      window.parent.postMessage({type:'INLINE_EDIT_SCREENSHOT_RESULT',dataUrl:null,scrollX:scrollX,scrollY:scrollY},'*');
+    }
+  });
+})();
+</script></body>
+</html>
