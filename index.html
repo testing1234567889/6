@@ -432,8 +432,16 @@
     </div>
 
     <!-- SAYA / PROFILE -->
-    <div id="page-profile" class="page main-page" data-page="profile">
+        <div id="page-profile" class="page main-page" data-page="profile">
       <div class="page-scroll">
+        <!-- Top bar Saya + dark mode toggle -->
+        <div class="profile-top-bar">
+          <h2>Saya</h2>
+          <button class="icon-btn profile-theme-toggle" onclick="toggleDarkMode()" title="Ganti Tema">
+            <i class="fas fa-moon mode-icon-moon"></i>
+            <i class="fas fa-sun mode-icon-sun"></i>
+          </button>
+        </div>
         <div class="profile-header">
           <div class="profile-avatar" id="profile-avatar">U</div>
           <h2 id="profile-name">User</h2>
@@ -513,8 +521,7 @@
           <i class="fas fa-sign-out-alt"></i> Keluar
         </button>
 
-        <p class="version-text">GPay v3.0.0</p>
-        <div class="page-bottom-space"></div>
+               <p class="version-text">GPay v3.0.0</p>
       </div>
     </div>
 
