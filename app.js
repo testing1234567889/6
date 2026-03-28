@@ -1,4 +1,13 @@
-/* ===== GPay v3 — Complete Application Logic ===== */
+/* ===== GPay v3 — Complete Application Logic =====
+   FIXED v1.1:
+   - setTopupAmount: hapus global event.target → param btn
+   - submitTopup: hapus global event.target → param btn
+   - processSendMoney: hapus global event.target → param btn
+   - processRequestMoney: hapus global event.target → param btn
+   - processScanPay: hapus global event.target → param btn
+   - payListrik: hapus global event.target + fix from → fromUid
+   Semua fungsi backward-compatible (btn opsional)
+===================================================== */
 
 // ===== FIREBASE CONFIG =====
 const firebaseConfig = {
@@ -10,32 +19,31 @@ const firebaseConfig = {
   messagingSenderId: "52109851315",
   appId: "1:52109851315:web:ba255b74b4ce0500774ec6"
 };
-
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-const db = firebase.database();
+const db   = firebase.database();
 
 // ===== SAFE STORAGE (in-memory) =====
 const safeStorage = {
   _data: {},
-  getItem(key) { return this._data[key] || null; },
+  getItem(key)        { return this._data[key] || null; },
   setItem(key, value) { this._data[key] = String(value); },
-  removeItem(key) { delete this._data[key]; }
+  removeItem(key)     { delete this._data[key]; }
 };
 
 // ===== GLOBAL STATE =====
-let currentUser = null;
-let userData = null;
-let balanceHidden = false;
-let currentActivityFilter = 'all';
-let pageHistory = [];
-let promoInterval = null;
-let currentPromoSlide = 0;
-let selectedRecipientUid = null;
+let currentUser                = null;
+let userData                   = null;
+let balanceHidden              = false;
+let currentActivityFilter      = 'all';
+let pageHistory                = [];
+let promoInterval              = null;
+let currentPromoSlide          = 0;
+let selectedRecipientUid       = null;
 let selectedRequestRecipientUid = null;
-let selectedProvider = '';
-let allTransactions = [];
-let searchDebounce = null;
+let selectedProvider           = '';
+let allTransactions            = [];
+let searchDebounce             = null;
 
 // ===== SPLASH SCREEN =====
 window.addEventListener('load', () => {
@@ -50,19 +58,19 @@ window.addEventListener('load', () => {
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.ripple');
   if (!btn) return;
-  const rect = btn.getBoundingClientRect();
-  const size = Math.max(rect.width, rect.height);
+  const rect   = btn.getBoundingClientRect();
+  const size   = Math.max(rect.width, rect.height);
   const ripple = document.createElement('span');
   ripple.classList.add('ripple-effect');
-  ripple.style.width = ripple.style.height = size + 'px';
-  ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
-  ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+  ripple.style.width  = ripple.style.height = size + 'px';
+  ripple.style.left   = (e.clientX - rect.left - size / 2) + 'px';
+  ripple.style.top    = (e.clientY - rect.top  - size / 2) + 'px';
   btn.appendChild(ripple);
   setTimeout(() => ripple.remove(), 600);
 });
 
 // ===== ONLINE/OFFLINE =====
-window.addEventListener('online', () => showToast('Koneksi kembali', 'success'));
+window.addEventListener('online',  () => showToast('Koneksi kembali', 'success'));
 window.addEventListener('offline', () => showToast('Tidak ada koneksi', 'warning'));
 
 // ===== AUTH STATE =====
@@ -72,7 +80,7 @@ auth.onAuthStateChanged(async (user) => {
     await initApp(user);
   } else {
     currentUser = null;
-    userData = null;
+    userData    = null;
     showAuthPages();
   }
 });
@@ -85,60 +93,38 @@ function showAuthPages() {
 }
 
 async function initApp(user) {
-  // Hide auth, show main
   document.querySelectorAll('.auth-page').forEach(p => {
     p.classList.remove('active');
     p.style.display = 'none';
   });
   document.getElementById('main-app').classList.remove('hidden');
 
-  // Load or create user data
-  const userRef = db.ref('users/' + user.uid);
-  const snapshot = await userRef.once('value');
-
+  const userRef    = db.ref('users/' + user.uid);
+  const snapshot   = await userRef.once('value');
   if (!snapshot.exists()) {
-    // Create default user data
     await userRef.set({
       fullName: user.displayName || user.email.split('@')[0],
-      email: user.email,
-      phone: '',
-      balance: 0,
-      gplusBalance: 0,
-      pin: '',
+      email: user.email, phone: '',
+      balance: 0, gplusBalance: 0, pin: '',
       isEmailVerified: user.emailVerified,
-      isPhoneVerified: false,
-      protectionScore: 20,
-      createdAt: Date.now(),
-      lastCheckin: 0,
-      cards: []
+      isPhoneVerified: false, protectionScore: 20,
+      createdAt: Date.now(), lastCheckin: 0, cards: []
     });
   } else {
-    // Update email verification status
-    await userRef.update({
-      isEmailVerified: user.emailVerified
-    });
+    await userRef.update({ isEmailVerified: user.emailVerified });
   }
 
-  // Listen for user data changes
   userRef.on('value', (snap) => {
     userData = snap.val();
     if (userData) updateUI();
   });
 
-  // Listen for transactions
   listenTransactions(user.uid);
-  // Listen for messages
   listenMessages(user.uid);
-  // Listen for topup requests
   listenTopupRequests(user.uid);
-  // Listen for bills
   listenBills(user.uid);
-  // Listen for promo codes
   listenPromoCodes();
-  // Listen for pending requests
   listenPendingRequests(user.uid);
-
-  // Show home
   switchTab('home');
   startPromoSlider();
   generateQRCode(user.uid);
@@ -148,100 +134,84 @@ async function initApp(user) {
 // ===== UI UPDATE =====
 function updateUI() {
   if (!userData) return;
-
-  const name = userData.fullName || 'User';
+  const name    = userData.fullName || 'User';
   const initial = name.charAt(0).toUpperCase();
   const balance = userData.balance || 0;
-  const gplus = userData.gplusBalance || 0;
+  const gplus   = userData.gplusBalance || 0;
 
-  // Greeting - show small greeting text, prominent username
   const hour = new Date().getHours();
   let greeting = 'Selamat Pagi';
-  if (hour >= 11 && hour < 15) greeting = 'Selamat Siang';
-  else if (hour >= 15 && hour < 18) greeting = 'Selamat Sore';
-  else if (hour >= 18 || hour < 4) greeting = 'Selamat Malam';
-
+  if (hour >= 11 && hour < 15)               greeting = 'Selamat Siang';
+  else if (hour >= 15 && hour < 18)          greeting = 'Selamat Sore';
+  else if (hour >= 18 || hour < 4)           greeting = 'Selamat Malam';
   setTextContent('greeting-text', greeting + ' 👋');
   setTextContent('greeting-name', name);
 
-  // Show/hide admin menu item
   const adminMenuItem = document.getElementById('admin-menu-item');
   if (adminMenuItem) {
-    adminMenuItem.style.display = (currentUser && currentUser.uid === 'zzfDwQucdycGyVHsM3zq0tx0A9o1') ? 'flex' : 'none';
+    adminMenuItem.style.display = (currentUser && currentUser.uid === 'EsmlqXOnu4VDvCbHp89R0h6ec0R2') ? 'flex' : 'none';
   }
-  setTextContent('home-avatar', initial);
+
+  setTextContent('home-avatar',    initial);
   setTextContent('profile-avatar', initial);
-  setTextContent('profile-name', name);
-  setTextContent('profile-phone', userData.phone || '-');
-  setTextContent('qr-name', name);
+  setTextContent('profile-name',   name);
+  setTextContent('profile-phone',  userData.phone || '-');
+  setTextContent('qr-name',        name);
 
-  // Balance
   updateBalanceDisplay(balance, gplus);
+  setTextContent('ps-saldo',      'G' + formatNumber(balance));
+  setTextContent('ps-gplus',      'G' + formatNumber(gplus));
+  setTextContent('wallet-balance','G' + formatNumber(balance));
 
-  // Profile page
-  setTextContent('ps-saldo', 'G' + formatNumber(balance));
-  setTextContent('ps-gplus', 'G' + formatNumber(gplus));
-
-  // Wallet
-  setTextContent('wallet-balance', 'G' + formatNumber(balance));
-
-  // Settings
-  const settingsName = document.getElementById('settings-name');
+  const settingsName  = document.getElementById('settings-name');
   const settingsEmail = document.getElementById('settings-email');
   const settingsPhone = document.getElementById('settings-phone');
-  if (settingsName && !settingsName.matches(':focus')) settingsName.value = name;
-  if (settingsEmail) settingsEmail.value = userData.email || '';
+  if (settingsName  && !settingsName.matches(':focus'))  settingsName.value  = name;
+  if (settingsEmail)                                     settingsEmail.value = userData.email || '';
   if (settingsPhone && !settingsPhone.matches(':focus')) settingsPhone.value = userData.phone || '';
 
-  // Email verification status
   updateEmailVerificationUI();
   updateProtection();
 }
 
 function updateBalanceDisplay(balance, gplus) {
   const amountEl = document.getElementById('balance-amount');
-  const gplusEl = document.getElementById('gplus-display');
-
+  const gplusEl  = document.getElementById('gplus-display');
   if (balanceHidden) {
     amountEl.textContent = '•••••';
-    gplusEl.textContent = 'G•••••';
+    gplusEl.textContent  = 'G•••••';
   } else {
     amountEl.textContent = formatNumber(balance);
-    gplusEl.textContent = 'G' + formatNumber(gplus);
+    gplusEl.textContent  = 'G' + formatNumber(gplus);
   }
 }
 
 async function updateEmailVerificationUI() {
-  // Force reload to get latest email verification status
   if (currentUser) {
-    try {
-      await currentUser.reload();
-      currentUser = auth.currentUser;
-    } catch(e) { /* ignore reload errors */ }
+    try { await currentUser.reload(); currentUser = auth.currentUser; } catch(e) {}
   }
   const isVerified = currentUser && currentUser.emailVerified;
-  const badge = document.getElementById('settings-email-badge');
-  const statusEl = document.getElementById('email-verify-status');
-  const verifyBtn = document.getElementById('verify-email-btn');
-
+  const badge      = document.getElementById('settings-email-badge');
+  const statusEl   = document.getElementById('email-verify-status');
+  const verifyBtn  = document.getElementById('verify-email-btn');
   if (badge) {
     badge.textContent = isVerified ? 'Terverifikasi' : 'Belum';
-    badge.className = 'verify-badge ' + (isVerified ? 'verified' : 'pending');
+    badge.className   = 'verify-badge ' + (isVerified ? 'verified' : 'pending');
   }
   if (statusEl) {
-    statusEl.textContent = isVerified ? 'Email terverifikasi' : 'Belum diverifikasi';
-    statusEl.style.color = isVerified ? '#059669' : '';
+    statusEl.textContent  = isVerified ? 'Email terverifikasi' : 'Belum diverifikasi';
+    statusEl.style.color  = isVerified ? '#059669' : '';
   }
   if (verifyBtn) {
     if (isVerified) {
-      verifyBtn.textContent = '✓';
-      verifyBtn.disabled = true;
-      verifyBtn.className = 'btn btn-sm btn-outline ripple';
-      verifyBtn.style.color = '#059669';
+      verifyBtn.textContent    = '✓';
+      verifyBtn.disabled       = true;
+      verifyBtn.className      = 'btn btn-sm btn-outline ripple';
+      verifyBtn.style.color    = '#059669';
       verifyBtn.style.borderColor = '#059669';
     } else {
       verifyBtn.textContent = 'Kirim';
-      verifyBtn.disabled = false;
+      verifyBtn.disabled    = false;
     }
   }
 }
@@ -249,28 +219,21 @@ async function updateEmailVerificationUI() {
 // ===== NAVIGATION =====
 function showPage(pageId) {
   const page = document.getElementById('page-' + pageId);
-  if (!page) {
-    showToast('Halaman tidak tersedia', 'info');
-    return;
-  }
-
+  if (!page) { showToast('Halaman tidak tersedia', 'info'); return; }
   if (page.classList.contains('sub-page')) {
     pageHistory.push(pageId);
     page.style.display = 'flex';
     page.classList.add('active');
-    // Trigger entry animation
     page.style.animation = 'none';
-    page.offsetHeight; // force reflow
+    page.offsetHeight;
     page.style.animation = '';
-
-    // Force populate settings fields every time settings page is shown
     if (pageId === 'settings' && userData) {
-      const settingsName = document.getElementById('settings-name');
-      const settingsEmail = document.getElementById('settings-email');
-      const settingsPhone = document.getElementById('settings-phone');
-      if (settingsName) settingsName.value = userData.fullName || '';
-      if (settingsEmail) settingsEmail.value = userData.email || (currentUser && currentUser.email) || '';
-      if (settingsPhone) settingsPhone.value = userData.phone || '';
+      const sn = document.getElementById('settings-name');
+      const se = document.getElementById('settings-email');
+      const sp = document.getElementById('settings-phone');
+      if (sn) sn.value = userData.fullName || '';
+      if (se) se.value = userData.email || (currentUser && currentUser.email) || '';
+      if (sp) sp.value = userData.phone || '';
       updateEmailVerificationUI();
     }
   } else if (page.classList.contains('auth-page')) {
@@ -286,12 +249,12 @@ function showPage(pageId) {
 function goBack() {
   if (pageHistory.length > 0) {
     const pageId = pageHistory.pop();
-    const page = document.getElementById('page-' + pageId);
+    const page   = document.getElementById('page-' + pageId);
     if (page) {
       page.style.animation = 'slideOutRight 0.25s ease forwards';
       setTimeout(() => {
         page.classList.remove('active');
-        page.style.display = 'none';
+        page.style.display   = 'none';
         page.style.animation = '';
       }, 250);
     }
@@ -299,19 +262,14 @@ function goBack() {
 }
 
 function switchTab(tab) {
-  // Close any open sub-pages
   pageHistory = [];
   document.querySelectorAll('.sub-page').forEach(p => {
     p.classList.remove('active');
     p.style.display = 'none';
   });
-
-  // Switch main page
   document.querySelectorAll('.main-page').forEach(p => p.classList.remove('active'));
   const page = document.getElementById('page-' + tab);
   if (page) page.classList.add('active');
-
-  // Update nav
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const navItem = document.querySelector(`.nav-item[data-tab="${tab}"]`);
   if (navItem) navItem.classList.add('active');
@@ -320,10 +278,9 @@ function switchTab(tab) {
 // ===== AUTH: LOGIN =====
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const email = document.getElementById('login-email').value.trim();
+  const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
-  const btn = e.target.querySelector('.btn');
-
+  const btn      = e.target.querySelector('.btn');
   toggleBtnLoading(btn, true);
   try {
     await auth.signInWithEmailAndPassword(email, password);
@@ -337,43 +294,24 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 // ===== AUTH: REGISTER =====
 document.getElementById('register-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
+  const name     = document.getElementById('reg-name').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
   const password = document.getElementById('reg-password').value;
-  const confirm = document.getElementById('reg-confirm').value;
-  const btn = e.target.querySelector('.btn');
-
-  if (password !== confirm) {
-    showToast('Password tidak cocok', 'error');
-    return;
-  }
-  if (password.length < 8) {
-    showToast('Password minimal 8 karakter', 'error');
-    return;
-  }
-
+  const confirm  = document.getElementById('reg-confirm').value;
+  const btn      = e.target.querySelector('.btn');
+  if (password !== confirm) { showToast('Password tidak cocok', 'error'); return; }
+  if (password.length < 8)  { showToast('Password minimal 8 karakter', 'error'); return; }
   toggleBtnLoading(btn, true);
   try {
     const cred = await auth.createUserWithEmailAndPassword(email, password);
     await cred.user.updateProfile({ displayName: name });
     await cred.user.sendEmailVerification();
-
-    // Create user in DB
     await db.ref('users/' + cred.user.uid).set({
-      fullName: name,
-      email: email,
-      phone: '',
-      balance: 0,
-      gplusBalance: 0,
-      pin: '',
-      isEmailVerified: false,
-      isPhoneVerified: false,
-      protectionScore: 20,
-      createdAt: Date.now(),
-      lastCheckin: 0,
-      cards: []
+      fullName: name, email, phone: '',
+      balance: 0, gplusBalance: 0, pin: '',
+      isEmailVerified: false, isPhoneVerified: false,
+      protectionScore: 20, createdAt: Date.now(), lastCheckin: 0, cards: []
     });
-
     showToast('Akun berhasil dibuat! Verifikasi email telah dikirim.', 'success');
   } catch (err) {
     showToast(getAuthError(err.code), 'error');
@@ -385,8 +323,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
 document.getElementById('forgot-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = document.getElementById('forgot-email').value.trim();
-  const btn = e.target.querySelector('.btn');
-
+  const btn   = e.target.querySelector('.btn');
   toggleBtnLoading(btn, true);
   try {
     await auth.sendPasswordResetEmail(email);
@@ -398,10 +335,17 @@ document.getElementById('forgot-form').addEventListener('submit', async (e) => {
   toggleBtnLoading(btn, false);
 });
 
+function togglePassword(inputId, iconEl) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const show   = input.type === 'password';
+  input.type   = show ? 'text' : 'password';
+  if (iconEl) iconEl.className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
+}
+
 // ===== LOGOUT =====
 function doLogout() {
   if (confirm('Yakin ingin keluar?')) {
-    // Remove listeners
     if (currentUser) {
       db.ref('users/' + currentUser.uid).off();
       db.ref('transactions').off();
@@ -416,15 +360,12 @@ function doLogout() {
   }
 }
 
-// ===== EMAIL VERIFICATION CHECK =====
+// ===== EMAIL VERIFICATION =====
 function checkEmailVerified() {
   if (!currentUser) return false;
-  // Reload to get latest status
   currentUser.reload().then(() => {
     currentUser = auth.currentUser;
-    if (userData) {
-      db.ref('users/' + currentUser.uid).update({ isEmailVerified: currentUser.emailVerified });
-    }
+    if (userData) db.ref('users/' + currentUser.uid).update({ isEmailVerified: currentUser.emailVerified });
     updateEmailVerificationUI();
   });
   return currentUser.emailVerified;
@@ -448,28 +389,26 @@ async function resendVerification() {
 }
 
 // ===== TOP UP =====
-function setTopupAmount(amount) {
+// FIX: btn sebagai parameter (backward-compat: fallback ke event.target jika ada)
+function setTopupAmount(amount, btn) {
   document.getElementById('topup-amount').value = amount;
   document.querySelectorAll('.quick-amt').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  // Terima btn dari onclick="setTopupAmount(x, this)" ATAU fallback ke event
+  const activeBtn = btn || (typeof event !== 'undefined' && event.target);
+  if (activeBtn) activeBtn.classList.add('active');
 }
 
-async function submitTopup() {
+// FIX: btn sebagai parameter → HTML: onclick="submitTopup(this)"
+async function submitTopup(btn) {
   const amount = parseInt(document.getElementById('topup-amount').value);
-  if (!amount || amount < 1000) {
-    showToast('Minimal isi saldo G1.000', 'error');
-    return;
-  }
-
-  const btn = event.target;
+  if (!amount || amount < 1000) { showToast('Minimal isi saldo G1.000', 'error'); return; }
+  // Fallback: cari tombol submit di halaman topup
+  if (!btn) btn = document.querySelector('#page-topup .btn-primary');
   toggleBtnLoading(btn, true);
   try {
     await db.ref('topupRequests').push({
-      uid: currentUser.uid,
-      amount: amount,
-      status: 'pending',
-      requestDate: Date.now(),
-      approvedDate: null
+      uid: currentUser.uid, amount,
+      status: 'pending', requestDate: Date.now(), approvedDate: null
     });
     showToast('Permintaan isi saldo terkirim! Menunggu persetujuan admin.', 'success');
     document.getElementById('topup-amount').value = '';
@@ -483,72 +422,57 @@ async function submitTopup() {
 function listenTopupRequests(uid) {
   db.ref('topupRequests').orderByChild('uid').equalTo(uid).on('value', (snap) => {
     const container = document.getElementById('topup-history');
-    const data = snap.val();
+    const data      = snap.val();
     if (!data) {
-      container.innerHTML = '<div class="empty-state small"><i class="fas fa-clock"></i><p>Belum ada permintaan</p></div>';
+      container.innerHTML = `<div class="empty-state small"><i class="fas fa-clock"></i><p>Belum ada permintaan</p></div>`;
       return;
     }
-
-    const items = Object.entries(data).sort((a, b) => b[1].requestDate - a[1].requestDate);
-    container.innerHTML = items.map(([id, req]) => {
-      const statusClass = req.status;
-      const statusText = req.status === 'pending' ? 'Menunggu' : req.status === 'approved' ? 'Disetujui' : 'Ditolak';
-      const icon = req.status === 'pending' ? 'fa-clock' : req.status === 'approved' ? 'fa-check' : 'fa-times';
-      return `
-        <div class="topup-item">
-          <div class="ti-icon ${statusClass}"><i class="fas ${icon}"></i></div>
-          <div class="ti-info">
-            <strong>G${formatNumber(req.amount)}</strong>
-            <small>${formatDate(req.requestDate)}</small>
-          </div>
-          <span class="ti-status ${statusClass}">${statusText}</span>
+    const items = Object.entries(data).sort((a, b) => (b[1].requestDate||0) - (a[1].requestDate||0));
+    container.innerHTML = items.map(([id, t]) => {
+      const statusColor = t.status === 'approved' ? 'var(--success)' : t.status === 'rejected' ? 'var(--danger)' : 'var(--warning)';
+      const statusText  = t.status === 'approved' ? 'Disetujui' : t.status === 'rejected' ? 'Ditolak' : 'Menunggu';
+      return `<div class="topup-item">
+        <div class="topup-item-left">
+          <i class="fas fa-wallet" style="color:var(--primary)"></i>
+          <div><div class="topup-amount">G${formatNumber(t.amount)}</div>
+            <div class="topup-date">${formatDate(t.requestDate)}</div></div>
         </div>
-      `;
+        <span class="topup-status" style="color:${statusColor}">${statusText}</span>
+      </div>`;
     }).join('');
-
-    // Also listen for approved ones to update balance (realtime)
-    items.forEach(([id, req]) => {
-      if (req.status === 'approved') {
-        // Balance already updated by admin
-      }
-    });
   });
 }
 
 // ===== SEND MONEY =====
 function searchRecipient() {
   clearTimeout(searchDebounce);
-  const query = document.getElementById('send-search').value.trim().toLowerCase();
+  const query    = document.getElementById('send-search').value.trim().toLowerCase();
   const resultEl = document.getElementById('recipient-result');
-
   if (query.length < 3) {
     resultEl.classList.add('hidden');
     selectedRecipientUid = null;
     return;
   }
-
   searchDebounce = setTimeout(() => {
     db.ref('users').once('value', (snap) => {
       const users = snap.val();
       if (!users) return;
-
       for (const [uid, u] of Object.entries(users)) {
         if (uid === currentUser.uid) continue;
         if ((u.email && u.email.toLowerCase().includes(query)) ||
             (u.phone && u.phone.includes(query))) {
           selectedRecipientUid = uid;
-          resultEl.innerHTML = `
-            <div class="avatar-circle">${(u.fullName || 'U').charAt(0).toUpperCase()}</div>
-            <div>
-              <div class="ri-name">${u.fullName || 'User'}</div>
-              <div class="ri-email">${u.email || ''}</div>
-            </div>
-          `;
+          const name = u.fullName || u.email || 'User';
+          resultEl.innerHTML = `<div class="ri-item" onclick="confirmRecipient('${uid}','${name.replace(/'/g,"\\'")}')">
+            <div class="ri-avatar">${name.charAt(0).toUpperCase()}</div>
+            <div><div class="ri-name">${name}</div><div class="ri-email">${u.email||''}</div></div>
+          </div>`;
           resultEl.classList.remove('hidden');
+          resultEl.style.borderColor = 'var(--primary)';
           return;
         }
       }
-      resultEl.innerHTML = '<p style="color:var(--text-secondary);font-size:14px;">Pengguna tidak ditemukan</p>';
+      resultEl.innerHTML = `<div class="ri-item text-muted"><i class="fas fa-user-slash"></i> Pengguna tidak ditemukan</div>`;
       resultEl.classList.remove('hidden');
       resultEl.style.borderColor = 'var(--border)';
       selectedRecipientUid = null;
@@ -556,54 +480,36 @@ function searchRecipient() {
   }, 400);
 }
 
-async function processSendMoney() {
+function confirmRecipient(uid, name) {
+  selectedRecipientUid = uid;
+  document.getElementById('send-search').value = name;
+  document.getElementById('recipient-result').classList.add('hidden');
+}
+
+// FIX: btn sebagai parameter → HTML: onclick="processSendMoney(this)"
+async function processSendMoney(btn) {
   if (!requireEmailVerified()) return;
-  if (!selectedRecipientUid) {
-    showToast('Pilih penerima terlebih dahulu', 'error');
-    return;
-  }
-
+  if (!selectedRecipientUid) { showToast('Pilih penerima terlebih dahulu', 'error'); return; }
   const amount = parseInt(document.getElementById('send-amount').value);
-  const note = document.getElementById('send-note').value.trim();
-
-  if (!amount || amount < 100) {
-    showToast('Minimal kirim G100', 'error');
-    return;
-  }
-  if (!userData || userData.balance < amount) {
-    showToast('Saldo tidak cukup', 'error');
-    return;
-  }
-
-  const btn = event.target;
+  const note   = document.getElementById('send-note').value.trim();
+  if (!amount || amount < 100)            { showToast('Minimal kirim G100', 'error'); return; }
+  if (!userData || userData.balance < amount) { showToast('Saldo tidak cukup', 'error'); return; }
+  if (!btn) btn = document.querySelector('#page-send-money .btn-primary');
   toggleBtnLoading(btn, true);
-
   try {
-    // Atomic transaction for sender
-    await db.ref('users/' + currentUser.uid + '/balance').transaction((current) => {
-      if ((current || 0) < amount) return; // abort
-      return (current || 0) - amount;
+    await db.ref('users/' + currentUser.uid + '/balance').transaction(cur => {
+      if ((cur || 0) < amount) return;
+      return (cur || 0) - amount;
     });
-
-    // Atomic transaction for recipient
-    await db.ref('users/' + selectedRecipientUid + '/balance').transaction((current) => {
-      return (current || 0) + amount;
-    });
-
-    // Record transaction
+    await db.ref('users/' + selectedRecipientUid + '/balance').transaction(cur => (cur || 0) + amount);
     await db.ref('transactions').push({
-      fromUid: currentUser.uid,
-      toUid: selectedRecipientUid,
-      type: 'transfer',
-      amount: amount,
-      status: 'success',
-      description: note || 'Kirim uang',
-      date: Date.now()
+      fromUid: currentUser.uid, toUid: selectedRecipientUid,
+      type: 'transfer', amount, status: 'success',
+      description: note || 'Kirim uang', date: Date.now()
     });
-
     showToast('Berhasil mengirim G' + formatNumber(amount), 'success');
     document.getElementById('send-amount').value = '';
-    document.getElementById('send-note').value = '';
+    document.getElementById('send-note').value   = '';
     document.getElementById('send-search').value = '';
     document.getElementById('recipient-result').classList.add('hidden');
     selectedRecipientUid = null;
@@ -617,72 +523,60 @@ async function processSendMoney() {
 // ===== REQUEST MONEY =====
 function searchRequestRecipient() {
   clearTimeout(searchDebounce);
-  const query = document.getElementById('request-search').value.trim().toLowerCase();
+  const query    = document.getElementById('request-search').value.trim().toLowerCase();
   const resultEl = document.getElementById('request-recipient-result');
-
   if (query.length < 3) {
     resultEl.classList.add('hidden');
     selectedRequestRecipientUid = null;
     return;
   }
-
   searchDebounce = setTimeout(() => {
     db.ref('users').once('value', (snap) => {
       const users = snap.val();
       if (!users) return;
-
       for (const [uid, u] of Object.entries(users)) {
         if (uid === currentUser.uid) continue;
         if ((u.email && u.email.toLowerCase().includes(query)) ||
             (u.phone && u.phone.includes(query))) {
           selectedRequestRecipientUid = uid;
-          resultEl.innerHTML = `
-            <div class="avatar-circle">${(u.fullName || 'U').charAt(0).toUpperCase()}</div>
-            <div>
-              <div class="ri-name">${u.fullName || 'User'}</div>
-              <div class="ri-email">${u.email || ''}</div>
-            </div>
-          `;
+          const name = u.fullName || u.email || 'User';
+          resultEl.innerHTML = `<div class="ri-item" onclick="confirmRequestRecipient('${uid}','${name.replace(/'/g,"\\'")}')">
+            <div class="ri-avatar">${name.charAt(0).toUpperCase()}</div>
+            <div><div class="ri-name">${name}</div><div class="ri-email">${u.email||''}</div></div>
+          </div>`;
           resultEl.classList.remove('hidden');
           return;
         }
       }
-      resultEl.innerHTML = '<p style="color:var(--text-secondary);font-size:14px;">Pengguna tidak ditemukan</p>';
+      resultEl.innerHTML = `<div class="ri-item text-muted"><i class="fas fa-user-slash"></i> Pengguna tidak ditemukan</div>`;
       resultEl.classList.remove('hidden');
       selectedRequestRecipientUid = null;
     });
   }, 400);
 }
 
-async function processRequestMoney() {
-  if (!selectedRequestRecipientUid) {
-    showToast('Pilih pengguna terlebih dahulu', 'error');
-    return;
-  }
+function confirmRequestRecipient(uid, name) {
+  selectedRequestRecipientUid = uid;
+  document.getElementById('request-search').value = name;
+  document.getElementById('request-recipient-result').classList.add('hidden');
+}
 
+// FIX: btn sebagai parameter → HTML: onclick="processRequestMoney(this)"
+async function processRequestMoney(btn) {
+  if (!selectedRequestRecipientUid) { showToast('Pilih pengguna terlebih dahulu', 'error'); return; }
   const amount = parseInt(document.getElementById('request-amount').value);
-  const note = document.getElementById('request-note').value.trim();
-
-  if (!amount || amount < 100) {
-    showToast('Minimal minta G100', 'error');
-    return;
-  }
-
-  const btn = event.target;
+  const note   = document.getElementById('request-note').value.trim();
+  if (!amount || amount < 100) { showToast('Minimal minta G100', 'error'); return; }
+  if (!btn) btn = document.querySelector('#page-request-money .btn-primary');
   toggleBtnLoading(btn, true);
-
   try {
     await db.ref('pendingRequests').push({
-      fromUid: currentUser.uid,
-      toUid: selectedRequestRecipientUid,
-      amount: amount,
-      status: 'pending',
-      note: note || '',
-      date: Date.now()
+      fromUid: currentUser.uid, toUid: selectedRequestRecipientUid,
+      amount, status: 'pending', note: note || '', date: Date.now()
     });
     showToast('Permintaan uang terkirim!', 'success');
     document.getElementById('request-amount').value = '';
-    document.getElementById('request-note').value = '';
+    document.getElementById('request-note').value   = '';
     document.getElementById('request-search').value = '';
     document.getElementById('request-recipient-result').classList.add('hidden');
     selectedRequestRecipientUid = null;
@@ -697,9 +591,7 @@ function listenPendingRequests(uid) {
   db.ref('pendingRequests').orderByChild('toUid').equalTo(uid).on('value', (snap) => {
     const data = snap.val();
     if (!data) return;
-    // Show pending requests as notifications
-    const pending = Object.entries(data).filter(([id, r]) => r.status === 'pending');
-    // We'll display in notifications list
+    const pending = Object.entries(data).filter(([, r]) => r.status === 'pending');
     updateNotifications(pending);
   });
 }
@@ -707,110 +599,102 @@ function listenPendingRequests(uid) {
 function updateNotifications(pendingRequests) {
   const container = document.getElementById('notifications-list');
   if (!pendingRequests || pendingRequests.length === 0) {
-    container.innerHTML = '<div class="empty-state"><i class="fas fa-bell-slash"></i><p>Belum ada notifikasi</p></div>';
+    container.innerHTML = `<div class="empty-state"><i class="fas fa-bell-slash"></i><p>Belum ada notifikasi</p></div>`;
     return;
   }
-
-  container.innerHTML = '';
-  pendingRequests.forEach(([id, req]) => {
-    // Get requester info
-    db.ref('users/' + req.fromUid + '/fullName').once('value', (snap) => {
-      const name = snap.val() || 'User';
-      const item = document.createElement('div');
-      item.className = 'message-item';
-      item.innerHTML = `
-        <div class="msg-icon unread"><i class="fas fa-hand-holding-dollar"></i></div>
-        <div class="msg-info">
-          <strong>${name} meminta G${formatNumber(req.amount)}</strong>
-          <small>${req.note || 'Permintaan uang'} • ${formatDate(req.date)}</small>
+  container.innerHTML = pendingRequests.map(([id, r]) => {
+    const senderName = r.fromName || 'Seseorang';
+    return `<div class="notif-item">
+      <div class="notif-icon"><i class="fas fa-hand-holding-dollar"></i></div>
+      <div class="notif-body">
+        <div class="notif-title">${senderName} minta G${formatNumber(r.amount)}</div>
+        <div class="notif-desc">${r.note || ''}</div>
+        <div class="notif-actions">
+          <button class="btn btn-sm btn-primary ripple" onclick="acceptRequest('${id}',${r.amount},'${r.fromUid}')">Bayar</button>
+          <button class="btn btn-sm btn-outline ripple" onclick="declineRequest('${id}')">Tolak</button>
         </div>
-      `;
-      container.appendChild(item);
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function acceptRequest(requestId, amount, fromUid) {
+  if (!userData || userData.balance < amount) { showToast('Saldo tidak cukup', 'error'); return; }
+  try {
+    await db.ref('users/' + currentUser.uid + '/balance').transaction(cur => {
+      if ((cur || 0) < amount) return;
+      return (cur || 0) - amount;
     });
-  });
+    await db.ref('users/' + fromUid + '/balance').transaction(cur => (cur || 0) + amount);
+    await db.ref('pendingRequests/' + requestId).update({ status: 'paid' });
+    await db.ref('transactions').push({
+      fromUid: currentUser.uid, toUid: fromUid,
+      type: 'transfer', amount, status: 'success',
+      description: 'Bayar permintaan uang', date: Date.now()
+    });
+    showToast('Pembayaran berhasil', 'success');
+  } catch (err) {
+    showToast('Gagal: ' + err.message, 'error');
+  }
+}
+
+async function declineRequest(requestId) {
+  try {
+    await db.ref('pendingRequests/' + requestId).update({ status: 'declined' });
+    showToast('Permintaan ditolak', 'info');
+  } catch (err) {
+    showToast('Gagal: ' + err.message, 'error');
+  }
 }
 
 // ===== MESSAGES =====
 function listenMessages(uid) {
-  db.ref('messages').on('value', (snap) => {
-    const data = snap.val();
+  db.ref('messages').orderByChild('toUid').equalTo(uid).on('value', (snap) => {
+    const data      = snap.val();
     const container = document.getElementById('messages-list');
+    const badge     = document.getElementById('mail-badge');
+    const mailBtn   = document.getElementById('mail-btn');
     if (!data) {
-      container.innerHTML = '<div class="empty-state"><i class="fas fa-envelope-open"></i><p>Belum ada pesan</p></div>';
-      updateMailBadge(0);
+      container.innerHTML = `<div class="empty-state"><i class="fas fa-envelope-open"></i><p>Belum ada pesan</p></div>`;
+      if (badge) { badge.textContent = '0'; badge.classList.add('hidden'); }
       return;
     }
-
-    const messages = Object.entries(data)
-      .filter(([id, m]) => m.toUid === uid || m.toUid === 'all')
-      .sort((a, b) => b[1].date - a[1].date);
-
-    if (messages.length === 0) {
-      container.innerHTML = '<div class="empty-state"><i class="fas fa-envelope-open"></i><p>Belum ada pesan</p></div>';
-      updateMailBadge(0);
-      return;
+    const items   = Object.entries(data).sort((a, b) => (b[1].timestamp||0) - (a[1].timestamp||0));
+    const unread  = items.filter(([, m]) => !m.isRead).length;
+    if (badge) {
+      badge.textContent = unread;
+      badge.classList.toggle('hidden', unread === 0);
     }
-
-    let unreadCount = 0;
-    container.innerHTML = messages.map(([id, msg]) => {
-      const isUnread = !msg.isRead;
-      if (isUnread) unreadCount++;
-      return `
-        <div class="message-item ${isUnread ? 'unread' : ''}" onclick="readMessage('${id}')">
-          <div class="msg-icon ${isUnread ? 'unread' : ''}">
-            <i class="fas ${msg.type === 'promo' ? 'fa-tag' : msg.type === 'system' ? 'fa-bell' : 'fa-envelope'}"></i>
-          </div>
-          <div class="msg-info">
-            <strong>${msg.title || 'Pesan'}</strong>
-            <small>${(msg.body || '').substring(0, 50)}${msg.body && msg.body.length > 50 ? '...' : ''}</small>
-          </div>
-          <small style="color:var(--text-muted);font-size:11px;">${formatDateShort(msg.date)}</small>
+    if (mailBtn) mailBtn.classList.toggle('has-notif', unread > 0);
+    container.innerHTML = items.map(([id, m]) => {
+      const typeColor = m.type === 'warning' ? 'var(--warning)' : m.type === 'promo' ? 'var(--success)' : 'var(--primary)';
+      const typeIcon  = m.type === 'warning' ? 'fa-exclamation-triangle' : m.type === 'promo' ? 'fa-tag' : 'fa-info-circle';
+      return `<div class="message-item ${m.isRead ? '' : 'unread'}" onclick="markMessageRead('${id}')">
+        <div class="msg-icon" style="background:${typeColor}20;color:${typeColor}"><i class="fas ${typeIcon}"></i></div>
+        <div class="msg-body">
+          <div class="msg-title">${m.title || 'Pesan'}</div>
+          <div class="msg-text">${m.body || ''}</div>
+          <div class="msg-time">${formatTimeAgo(m.timestamp || m.date)}</div>
         </div>
-      `;
+        ${!m.isRead ? '<span class="unread-dot"></span>' : ''}
+      </div>`;
     }).join('');
-
-    updateMailBadge(unreadCount);
   });
 }
 
-function readMessage(msgId) {
+function markMessageRead(msgId) {
   db.ref('messages/' + msgId).update({ isRead: true });
-  // Show in a simple alert for now
-  db.ref('messages/' + msgId).once('value', (snap) => {
-    const msg = snap.val();
-    if (msg) {
-      showToast(msg.title + ': ' + msg.body, 'info');
-    }
-  });
-}
-
-function updateMailBadge(count) {
-  const badge = document.getElementById('mail-badge');
-  if (count > 0) {
-    badge.textContent = count;
-    badge.classList.remove('hidden');
-  } else {
-    badge.classList.add('hidden');
-  }
 }
 
 // ===== TRANSACTIONS =====
 function listenTransactions(uid) {
   db.ref('transactions').on('value', (snap) => {
     const data = snap.val();
-    if (!data) {
-      allTransactions = [];
-      renderTransactions();
-      renderHomeActivity();
-      renderIncomeExpense();
-      return;
-    }
-
+    if (!data) { allTransactions = []; renderTransactions(); return; }
     allTransactions = Object.entries(data)
-      .filter(([id, tx]) => tx.fromUid === uid || tx.toUid === uid)
       .map(([id, tx]) => ({ id, ...tx }))
-      .sort((a, b) => b.date - a.date);
-
+      .filter(tx => tx.fromUid === uid || tx.toUid === uid)
+      .sort((a, b) => (b.date||0) - (a.date||0));
     renderTransactions();
     renderHomeActivity();
     renderIncomeExpense();
@@ -818,78 +702,62 @@ function listenTransactions(uid) {
 }
 
 function renderTransactions() {
-  const container = document.getElementById('transaction-list');
-  const search = (document.getElementById('activity-search')?.value || '').toLowerCase();
-
-  let filtered = allTransactions;
-
-  // Filter
-  if (currentActivityFilter === 'in') {
-    filtered = filtered.filter(tx => tx.toUid === currentUser.uid && tx.status === 'success');
-  } else if (currentActivityFilter === 'out') {
-    filtered = filtered.filter(tx => tx.fromUid === currentUser.uid && tx.status === 'success');
-  } else if (currentActivityFilter === 'pending') {
-    filtered = filtered.filter(tx => tx.status === 'pending');
-  } else if (currentActivityFilter === 'failed') {
-    filtered = filtered.filter(tx => tx.status === 'failed');
+  const listEl   = document.getElementById('transaction-list');
+  const searchQ  = (document.getElementById('activity-search')?.value || '').toLowerCase();
+  let txs        = [...allTransactions];
+  if (currentActivityFilter !== 'all') {
+    if (currentActivityFilter === 'in')      txs = txs.filter(tx => tx.toUid === currentUser?.uid);
+    else if (currentActivityFilter === 'out') txs = txs.filter(tx => tx.fromUid === currentUser?.uid);
+    else txs = txs.filter(tx => tx.status === currentActivityFilter);
   }
-
-  // Search
-  if (search) {
-    filtered = filtered.filter(tx =>
-      (tx.description || '').toLowerCase().includes(search) ||
-      (tx.type || '').toLowerCase().includes(search)
-    );
-  }
-
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state"><i class="fas fa-receipt"></i><p>Belum ada transaksi</p></div>';
+  if (searchQ) txs = txs.filter(tx =>
+    (tx.description || '').toLowerCase().includes(searchQ) ||
+    (tx.type || '').toLowerCase().includes(searchQ)
+  );
+  if (!txs.length) {
+    listEl.innerHTML = `<div class="empty-state"><i class="fas fa-receipt"></i><p>Belum ada transaksi</p></div>`;
     return;
   }
-
-  container.innerHTML = filtered.map(tx => renderTransactionItem(tx)).join('');
+  listEl.innerHTML = txs.map(tx => renderTxItem(tx)).join('');
 }
 
-function renderTransactionItem(tx) {
-  const isIncome = tx.toUid === currentUser.uid;
-  const iconClass = tx.status === 'pending' ? 'pending' : tx.status === 'failed' ? 'failed' : (isIncome ? 'income' : 'expense');
-  const icon = tx.status === 'pending' ? 'fa-clock' : tx.status === 'failed' ? 'fa-times' : (isIncome ? 'fa-arrow-down' : 'fa-arrow-up');
-  const amountClass = tx.status === 'pending' ? 'pending-text' : (isIncome ? 'positive' : 'negative');
-  const prefix = isIncome ? '+' : '-';
-  const typeLabel = getTypeLabel(tx.type);
-
-  return `
-    <div class="transaction-item" onclick="showTxDetail('${tx.id}')">
-      <div class="tx-icon ${iconClass}"><i class="fas ${icon}"></i></div>
-      <div class="tx-info">
-        <strong>${tx.description || typeLabel}</strong>
-        <small>${formatDate(tx.date)}</small>
-      </div>
-      <span class="tx-amount ${amountClass}">${prefix}G${formatNumber(tx.amount)}</span>
+function renderTxItem(tx) {
+  const isOut     = tx.fromUid === currentUser?.uid;
+  const typeIcon  = { transfer:'fa-paper-plane', topup:'fa-wallet', reward:'fa-trophy', pulsa:'fa-mobile-screen-button', bill:'fa-file-invoice', qrpay:'fa-qrcode', payment:'fa-credit-card' };
+  const icon      = typeIcon[tx.type] || 'fa-exchange-alt';
+  const sign      = isOut ? '-' : '+';
+  const amtColor  = isOut ? 'var(--danger)' : 'var(--success)';
+  const statusBadge = tx.status === 'pending' ? '<span class="tx-badge pending">Pending</span>' : tx.status === 'failed' ? '<span class="tx-badge failed">Gagal</span>' : '';
+  return `<div class="tx-item" onclick="showTransactionDetail('${tx.id}')">
+    <div class="tx-icon ${isOut ? 'out' : 'in'}"><i class="fas ${icon}"></i></div>
+    <div class="tx-info">
+      <div class="tx-desc">${tx.description || tx.type || 'Transaksi'} ${statusBadge}</div>
+      <div class="tx-date">${formatDate(tx.date)}</div>
     </div>
-  `;
+    <div class="tx-amount" style="color:${amtColor}">${sign}G${formatNumber(tx.amount)}</div>
+  </div>`;
 }
 
 function renderHomeActivity() {
   const container = document.getElementById('home-activity');
-  const recent = allTransactions.slice(0, 3);
-
-  if (recent.length === 0) {
-    container.innerHTML = '<div class="empty-state"><i class="fas fa-receipt"></i><p>Belum ada aktivitas</p></div>';
+  if (!container) return;
+  const recent = allTransactions.slice(0, 5);
+  if (!recent.length) {
+    container.innerHTML = `<div class="empty-state"><i class="fas fa-receipt"></i><p>Belum ada aktivitas</p></div>`;
     return;
   }
-
-  container.innerHTML = recent.map(tx => renderTransactionItem(tx)).join('');
+  container.innerHTML = recent.map(tx => renderTxItem(tx)).join('');
 }
 
 function renderIncomeExpense() {
+  if (!currentUser) return;
   let income = 0, expense = 0;
   allTransactions.forEach(tx => {
-    if (tx.status !== 'success') return;
-    if (tx.toUid === currentUser.uid) income += tx.amount;
-    if (tx.fromUid === currentUser.uid) expense += tx.amount;
+    if (tx.status === 'failed') return;
+    if (tx.toUid === currentUser.uid)   income  += (tx.amount || 0);
+    if (tx.fromUid === currentUser.uid) expense += (tx.amount || 0);
   });
-  setTextContent('ie-income', 'G' + formatNumber(income));
+  setTextContent('ie-income',  'G' + formatNumber(income));
   setTextContent('ie-expense', 'G' + formatNumber(expense));
 }
 
@@ -900,158 +768,219 @@ function setActivityFilter(filter, el) {
   renderTransactions();
 }
 
-function filterTransactions() {
-  renderTransactions();
-}
+function filterTransactions() { renderTransactions(); }
 
-function showTxDetail(txId) {
+function showTransactionDetail(txId) {
   const tx = allTransactions.find(t => t.id === txId);
   if (!tx) return;
-
-  const isIncome = tx.toUid === currentUser.uid;
-  const statusClass = tx.status === 'success' ? 'success' : tx.status === 'pending' ? 'pending' : 'failed';
-  const statusText = tx.status === 'success' ? 'Berhasil' : tx.status === 'pending' ? 'Menunggu' : 'Gagal';
-
-  document.getElementById('tx-detail-body').innerHTML = `
+  const isOut = tx.fromUid === currentUser?.uid;
+  const modal = document.getElementById('tx-detail-modal') || createTxDetailModal();
+  modal.querySelector('.tx-detail-content').innerHTML = `
     <div class="tx-detail">
-      <div style="text-align:center;margin-bottom:20px;">
-        <div class="modal-icon ${isIncome ? 'success' : 'danger'}">
-          <i class="fas ${isIncome ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>
-        </div>
-        <h2 style="font-size:28px;font-weight:800;">${isIncome ? '+' : '-'}G${formatNumber(tx.amount)}</h2>
+      <div class="tx-detail-amount" style="color:${isOut?'var(--danger)':'var(--success)'}">
+        ${isOut?'-':'+'}G${formatNumber(tx.amount)}
       </div>
-      <div class="tx-detail-row">
-        <span class="tx-detail-label">Tipe</span>
-        <span class="tx-detail-value">${getTypeLabel(tx.type)}</span>
-      </div>
-      <div class="tx-detail-row">
-        <span class="tx-detail-label">Deskripsi</span>
-        <span class="tx-detail-value">${tx.description || '-'}</span>
-      </div>
-      <div class="tx-detail-row">
-        <span class="tx-detail-label">Tanggal</span>
-        <span class="tx-detail-value">${formatDate(tx.date)}</span>
-      </div>
-      <div class="tx-detail-row">
-        <span class="tx-detail-label">Status</span>
-        <span class="tx-detail-status ${statusClass}">${statusText}</span>
-      </div>
-      ${tx.promoCode ? `<div class="tx-detail-row"><span class="tx-detail-label">Kode Promo</span><span class="tx-detail-value">${tx.promoCode}</span></div>` : ''}
-    </div>
-  `;
+      <div class="tx-detail-row"><span class="tx-detail-label">Tipe</span><span class="tx-detail-value">${tx.type||'-'}</span></div>
+      <div class="tx-detail-row"><span class="tx-detail-label">Status</span><span class="tx-detail-value">${tx.status||'success'}</span></div>
+      <div class="tx-detail-row"><span class="tx-detail-label">Deskripsi</span><span class="tx-detail-value">${tx.description||'-'}</span></div>
+      <div class="tx-detail-row"><span class="tx-detail-label">Tanggal</span><span class="tx-detail-value">${formatDate(tx.date)}</span></div>
+      <div class="tx-detail-row"><span class="tx-detail-label">ID</span><span class="tx-detail-value" style="font-size:.7rem;word-break:break-all">${tx.id}</span></div>
+    </div>`;
   showModal('tx-detail-modal');
 }
 
+function createTxDetailModal() {
+  const el = document.createElement('div');
+  el.id    = 'tx-detail-modal';
+  el.className = 'modal-overlay';
+  el.innerHTML = `<div class="modal-content slide-up">
+    <div class="modal-header"><h3>Detail Transaksi</h3>
+      <button class="modal-close" onclick="hideModal('tx-detail-modal')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body tx-detail-content"></div>
+  </div>`;
+  document.body.appendChild(el);
+  return el;
+}
+
+// ===== QR PAY =====
+function generateQRCode(uid) {
+  const canvas = document.getElementById('qr-canvas');
+  if (!canvas || typeof QRCode === 'undefined') return;
+  try {
+    QRCode.toCanvas(canvas, uid, { width: 200, margin: 2, color: { dark: '#1a1d2e', light: '#ffffff' } });
+  } catch(e) { console.warn('QR generation failed:', e); }
+}
+
+function switchQRTab(tab, el) {
+  document.querySelectorAll('.qr-section').forEach(s => s.classList.add('hidden'));
+  document.getElementById('qr-' + tab).classList.remove('hidden');
+  document.querySelectorAll('#page-qr .tab-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+// FIX: btn sebagai parameter → HTML: onclick="processScanPay(this)"
+async function processScanPay(btn) {
+  if (!requireEmailVerified()) return;
+  const uidOrEmail = document.getElementById('scan-uid').value.trim();
+  const amount     = parseInt(document.getElementById('scan-amount').value);
+  const note       = document.getElementById('scan-note').value.trim();
+  if (!uidOrEmail) { showToast('Masukkan UID atau email penerima', 'error'); return; }
+  if (!amount || amount < 100) { showToast('Minimal bayar G100', 'error'); return; }
+  if (!userData || userData.balance < amount) { showToast('Saldo tidak cukup', 'error'); return; }
+  if (!btn) btn = document.querySelector('#qr-scan .btn-primary');
+  toggleBtnLoading(btn, true);
+  try {
+    const snap  = await db.ref('users').orderByChild('email').equalTo(uidOrEmail).once('value');
+    let toUid   = null;
+    if (snap.exists()) {
+      toUid = Object.keys(snap.val())[0];
+    } else {
+      const direct = await db.ref('users/' + uidOrEmail).once('value');
+      if (direct.exists()) toUid = uidOrEmail;
+    }
+    if (!toUid || toUid === currentUser.uid) {
+      showToast('Penerima tidak ditemukan', 'error');
+      toggleBtnLoading(btn, false);
+      return;
+    }
+    await db.ref('users/' + currentUser.uid + '/balance').transaction(cur => {
+      if ((cur || 0) < amount) return;
+      return (cur || 0) - amount;
+    });
+    await db.ref('users/' + toUid + '/balance').transaction(cur => (cur || 0) + amount);
+    await db.ref('transactions').push({
+      fromUid: currentUser.uid, toUid,
+      type: 'qrpay', amount, status: 'success',
+      description: note || 'QR Pay', date: Date.now()
+    });
+    showToast('Pembayaran berhasil G' + formatNumber(amount), 'success');
+    document.getElementById('scan-uid').value    = '';
+    document.getElementById('scan-amount').value = '';
+    document.getElementById('scan-note').value   = '';
+    goBack();
+  } catch (err) {
+    showToast('Gagal: ' + err.message, 'error');
+  }
+  toggleBtnLoading(btn, false);
+}
+
 // ===== PULSA & DATA =====
-function selectProvider(provider, el) {
-  selectedProvider = provider;
+function selectProvider(name, el) {
+  selectedProvider = name;
   document.querySelectorAll('.provider-chips .chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
 }
 
 function switchPulsaTab(tab, el) {
-  document.querySelectorAll('#page-pulsa .tab-btn').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('pulsa-packages').classList.toggle('hidden', tab !== 'pulsa');
-  document.getElementById('data-packages').classList.toggle('hidden', tab !== 'data');
+  document.querySelectorAll('.packages-grid').forEach(g => g.classList.add('hidden'));
+  document.getElementById(tab + '-packages').classList.remove('hidden');
+  document.querySelectorAll('#page-pulsa .tab-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
 }
 
-async function selectPackage(value, name, price) {
-  if (!requireEmailVerified()) return;
-
+function selectPackage(quota, name, price) {
   const phone = document.getElementById('pulsa-phone').value.trim();
-  if (!phone) {
-    showToast('Masukkan nomor HP terlebih dahulu', 'error');
-    return;
-  }
-  if (!selectedProvider) {
-    showToast('Pilih provider terlebih dahulu', 'error');
-    return;
-  }
-
-  if (!userData || userData.balance < price) {
-    showToast('Saldo tidak cukup', 'error');
-    return;
-  }
-
-  // Show confirmation
-  const cashback = Math.round(price * 0.05);
-  document.getElementById('confirm-tx-title').textContent = 'Konfirmasi Pembelian';
-  document.getElementById('confirm-tx-body').innerHTML = `
-    <div style="text-align:center;">
-      <p style="margin-bottom:12px;"><strong>${name}</strong></p>
-      <p>Nomor: ${phone}</p>
-      <p>Provider: ${selectedProvider}</p>
-      <p style="font-size:24px;font-weight:800;margin:16px 0;">G${formatNumber(price)}</p>
-      <p style="color:var(--success);font-size:13px;">Cashback 5%: G${formatNumber(cashback)}</p>
-    </div>
-  `;
-  document.getElementById('confirm-tx-btn').onclick = () => executePulsaPurchase(name, price, phone, cashback);
-  showModal('confirm-tx-modal');
+  if (!phone) { showToast('Masukkan nomor HP terlebih dahulu', 'error'); return; }
+  if (!requireEmailVerified()) return;
+  if (!userData || userData.balance < price) { showToast('Saldo tidak cukup', 'error'); return; }
+  const cashback = Math.floor(price * 0.05);
+  if (!confirm(`Beli ${name} untuk ${phone}\nProvider: ${selectedProvider||'Otomatis'}\nHarga: G${formatNumber(price)}\nCashback: G${formatNumber(cashback)}`)) return;
+  processPulsaPurchase(phone, name, price, cashback);
 }
 
-async function executePulsaPurchase(name, price, phone, cashback) {
-  hideModal('confirm-tx-modal');
-
+async function processPulsaPurchase(phone, name, price, cashback) {
   try {
-    // Deduct balance
-    await db.ref('users/' + currentUser.uid + '/balance').transaction((current) => {
-      if ((current || 0) < price) return;
-      return (current || 0) - price;
+    await db.ref('users/' + currentUser.uid + '/balance').transaction(cur => {
+      if ((cur || 0) < price) return;
+      return (cur || 0) - price;
     });
-
-    // Add cashback to gplus
-    await db.ref('users/' + currentUser.uid + '/gplusBalance').transaction((current) => {
-      return (current || 0) + cashback;
-    });
-
-    // Record transaction
+    const net = price - cashback;
+    await db.ref('users/' + currentUser.uid + '/gplusBalance').transaction(cur => (cur || 0) + cashback);
     await db.ref('transactions').push({
-      fromUid: currentUser.uid,
-      toUid: 'system',
-      type: 'pulsa',
-      amount: price,
-      status: 'success',
-      description: name + ' - ' + phone,
-      date: Date.now()
+      fromUid: currentUser.uid, toUid: 'system',
+      type: 'pulsa', amount: net, status: 'success',
+      description: `${name} - ${phone}`, date: Date.now()
     });
-
-    showToast('Pembelian berhasil! Cashback G' + formatNumber(cashback), 'success');
+    showToast(`Berhasil beli ${name}! Cashback G${formatNumber(cashback)}`, 'success');
+    goBack();
   } catch (err) {
     showToast('Gagal: ' + err.message, 'error');
   }
 }
 
-// ===== REWARDS / DAILY CHECKIN =====
-async function dailyCheckin() {
-  if (!currentUser || !userData) return;
+// ===== LISTRIK =====
+let selectedListrikPackage = null;
+let currentListrikType     = 'prepaid';
 
-  const now = Date.now();
-  const lastCheckin = userData.lastCheckin || 0;
-  const oneDayMs = 24 * 60 * 60 * 1000;
+function selectListrikType(type, el) {
+  currentListrikType = type;
+  document.querySelectorAll('#page-listrik .chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('listrik-packages').style.display = type === 'prepaid' ? 'block' : 'none';
+  selectedListrikPackage = null;
+}
 
-  if (now - lastCheckin < oneDayMs) {
-    showToast('Anda sudah klaim hari ini. Coba lagi besok!', 'warning');
-    return;
-  }
+function selectListrikPackage(amount) {
+  selectedListrikPackage = amount;
+  document.querySelectorAll('#page-listrik .package-card').forEach(c => c.classList.remove('active'));
+  event && event.currentTarget && event.currentTarget.classList.add('active');
+  const payBtn = document.getElementById('listrik-pay-btn');
+  if (payBtn) payBtn.style.background = 'var(--primary)';
+}
 
+// FIX: btn sebagai parameter → HTML: onclick="payListrik(this)"
+// FIX: from → fromUid untuk konsistensi dengan app.js lainnya
+async function payListrik(btn) {
+  const meterId = document.getElementById('listrik-meter-id').value.trim();
+  if (!meterId) { showToast('Masukkan nomor meter / ID pelanggan', 'error'); return; }
+  if (!requireEmailVerified()) return;
+  const amount = currentListrikType === 'postpaid'
+    ? parseInt(prompt('Masukkan jumlah tagihan:') || '0')
+    : selectedListrikPackage;
+  if (!amount || amount < 1) { showToast('Pilih nominal token terlebih dahulu', 'error'); return; }
+  if (!userData || userData.balance < amount) { showToast('Saldo tidak cukup', 'error'); return; }
+  if (!btn) btn = document.getElementById('listrik-pay-btn');
+  toggleBtnLoading(btn, true);
   try {
-    await db.ref('users/' + currentUser.uid).update({
-      lastCheckin: now
+    await db.ref('users/' + currentUser.uid + '/balance').transaction(cur => {
+      if ((cur || 0) < amount) return;
+      return (cur || 0) - amount;
     });
-    await db.ref('users/' + currentUser.uid + '/gplusBalance').transaction((current) => {
-      return (current || 0) + 500;
-    });
+    // FIX: pakai fromUid (bukan from) supaya admin dashboard bisa baca
     await db.ref('transactions').push({
-      fromUid: 'system',
-      toUid: currentUser.uid,
-      type: 'reward',
-      amount: 500,
-      status: 'success',
-      description: 'Check-in harian',
-      date: now
+      fromUid: currentUser.uid, toUid: 'system',
+      type: 'bill', amount, status: 'success',
+      description: `Listrik ${currentListrikType === 'prepaid' ? 'Token' : 'Tagihan'} - ${meterId}`,
+      date: Date.now()
     });
-    showToast('Check-in berhasil! +G500 GPay+', 'success');
+    showToast(`Pembayaran listrik G${formatNumber(amount)} berhasil!`, 'success');
+    document.getElementById('listrik-meter-id').value = '';
+    selectedListrikPackage = null;
+    goBack();
+  } catch (err) {
+    showToast('Gagal: ' + err.message, 'error');
+  }
+  toggleBtnLoading(btn, false);
+}
+
+// ===== REWARDS =====
+async function dailyCheckin() {
+  if (!currentUser) return;
+  const today     = new Date().toDateString();
+  const lastCheck = userData?.lastCheckin ? new Date(userData.lastCheckin).toDateString() : '';
+  if (lastCheck === today) { showToast('Sudah check-in hari ini!', 'info'); return; }
+  const reward = 500;
+  try {
+    await db.ref('users/' + currentUser.uid).update({ lastCheckin: Date.now() });
+    await db.ref('users/' + currentUser.uid + '/gplusBalance').transaction(cur => (cur || 0) + reward);
+    await db.ref('transactions').push({
+      fromUid: 'system', toUid: currentUser.uid,
+      type: 'reward', amount: reward, status: 'success',
+      description: 'Check-in harian', date: Date.now()
+    });
+    document.getElementById('checkin-btn').textContent = 'Sudah Klaim ✓';
+    document.getElementById('checkin-btn').disabled    = true;
+    showToast('Check-in berhasil! +G500', 'success');
   } catch (err) {
     showToast('Gagal: ' + err.message, 'error');
   }
@@ -1062,876 +991,376 @@ function listenPromoCodes() {
   db.ref('promoCodes').on('value', (snap) => {
     const data = snap.val();
     renderAvailableVouchers(data);
-    renderRewardsPromos(data);
   });
 }
 
-function renderAvailableVouchers(data) {
+function renderAvailableVouchers(promosData) {
   const container = document.getElementById('available-vouchers');
-  if (!data) {
-    container.innerHTML = '<div class="empty-state small"><i class="fas fa-ticket"></i><p>Belum ada promo</p></div>';
+  if (!container) return;
+  if (!promosData) {
+    container.innerHTML = `<div class="empty-state small"><i class="fas fa-ticket"></i><p>Belum ada promo</p></div>`;
     return;
   }
-
-  const active = Object.entries(data).filter(([id, p]) => {
-    return p.isActive && (!p.expiryDate || p.expiryDate > Date.now()) && (p.currentUses < p.maxUses);
-  });
-
-  if (active.length === 0) {
-    container.innerHTML = '<div class="empty-state small"><i class="fas fa-ticket"></i><p>Belum ada promo</p></div>';
+  // FIX: filter pakai isActive (field name baru dari admin.js)
+  const actives = Object.entries(promosData).filter(([, p]) => p.isActive !== false);
+  if (!actives.length) {
+    container.innerHTML = `<div class="empty-state small"><i class="fas fa-ticket"></i><p>Belum ada promo</p></div>`;
     return;
   }
-
-  container.innerHTML = active.map(([id, p]) => `
-    <div class="voucher-card">
-      <h4>${p.description || p.code}</h4>
-      <p>Diskon ${p.type === 'percent' ? p.discount + '%' : 'G' + formatNumber(p.discount)}</p>
-      <span class="vc-code">${p.code}</span>
-    </div>
-  `).join('');
+  container.innerHTML = actives.map(([id, p]) => {
+    const discountText = p.type === 'percent'
+      ? `Diskon ${p.discount}%`
+      : `Diskon G${formatNumber(p.discount)}`;
+    return `<div class="voucher-card" onclick="copyPromoCode('${p.code}')">
+      <div class="vc-badge">${discountText}</div>
+      <div class="vc-code">${p.code}</div>
+      <div class="vc-desc">${p.description || ''}</div>
+      ${p.expiryDate ? `<div class="vc-expiry">Exp: ${p.expiryDate}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
-function renderRewardsPromos(data) {
-  const container = document.getElementById('rewards-promos');
-  if (!data) {
-    container.innerHTML = '<div class="empty-state small"><i class="fas fa-ticket"></i><p>Belum ada promo</p></div>';
-    return;
-  }
-
-  const active = Object.entries(data).filter(([id, p]) => p.isActive);
-  if (active.length === 0) {
-    container.innerHTML = '<div class="empty-state small"><i class="fas fa-ticket"></i><p>Belum ada promo</p></div>';
-    return;
-  }
-
-  container.innerHTML = active.map(([id, p]) => `
-    <div class="voucher-card">
-      <h4>${p.description || p.code}</h4>
-      <p>Diskon ${p.type === 'percent' ? p.discount + '%' : 'G' + formatNumber(p.discount)}</p>
-      <span class="vc-code">${p.code}</span>
-    </div>
-  `).join('');
+function copyPromoCode(code) {
+  navigator.clipboard?.writeText(code).then(() => showToast(`Kode ${code} disalin!`, 'success'))
+    .catch(() => { document.getElementById('promo-code-input').value = code; showToast('Kode disalin ke kolom input', 'info'); });
 }
 
 async function redeemPromoCode() {
-  const code = document.getElementById('promo-code-input').value.trim().toUpperCase();
-  if (!code) {
-    showToast('Masukkan kode promo', 'error');
-    return;
-  }
-
-  try {
-    const snap = await db.ref('promoCodes').orderByChild('code').equalTo(code).once('value');
-    const data = snap.val();
-    if (!data) {
-      showToast('Kode promo tidak ditemukan', 'error');
-      return;
-    }
-
-    const [id, promo] = Object.entries(data)[0];
-    if (!promo.isActive) {
-      showToast('Kode promo sudah tidak aktif', 'error');
-      return;
-    }
-    if (promo.expiryDate && promo.expiryDate < Date.now()) {
-      showToast('Kode promo sudah kadaluarsa', 'error');
-      return;
-    }
-    if (promo.currentUses >= promo.maxUses) {
-      showToast('Kode promo sudah habis', 'error');
-      return;
-    }
-
-    // Apply promo
-    const amount = promo.type === 'percent' ? Math.round((userData.balance || 0) * promo.discount / 100) : promo.discount;
-
-    await db.ref('users/' + currentUser.uid + '/gplusBalance').transaction((current) => {
-      return (current || 0) + amount;
-    });
-    await db.ref('promoCodes/' + id + '/currentUses').transaction((current) => {
-      return (current || 0) + 1;
-    });
-
-    showToast('Kode promo berhasil! +G' + formatNumber(amount) + ' GPay+', 'success');
-    document.getElementById('promo-code-input').value = '';
-  } catch (err) {
-    showToast('Gagal: ' + err.message, 'error');
-  }
-}
-
-// ===== QR CODE =====
-function generateQRCode(uid) {
-  const canvas = document.getElementById('qr-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const size = 200;
-
-  // Simple QR-like pattern based on UID
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, size, size);
-
-  // Generate deterministic pattern from UID
-  const cellSize = 8;
-  const gridSize = Math.floor(size / cellSize);
-  const margin = 2;
-
-  ctx.fillStyle = '#1a1a2e';
-
-  // Position markers (top-left, top-right, bottom-left)
-  drawQRMarker(ctx, 0, 0, cellSize);
-  drawQRMarker(ctx, (gridSize - 7) * cellSize, 0, cellSize);
-  drawQRMarker(ctx, 0, (gridSize - 7) * cellSize, cellSize);
-
-  // Data pattern from UID hash
-  let hash = 0;
-  for (let i = 0; i < uid.length; i++) {
-    hash = ((hash << 5) - hash) + uid.charCodeAt(i);
-    hash |= 0;
-  }
-
-  for (let y = margin; y < gridSize - margin; y++) {
-    for (let x = margin; x < gridSize - margin; x++) {
-      // Skip position markers
-      if ((x < 8 && y < 8) || (x >= gridSize - 8 && y < 8) || (x < 8 && y >= gridSize - 8)) continue;
-
-      // Deterministic fill
-      const seed = (x * 31 + y * 37 + hash) & 0xff;
-      if (seed % 3 === 0) {
-        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-      }
-    }
-  }
-
-  // Center logo area
-  const centerX = (size - 40) / 2;
-  const centerY = (size - 40) / 2;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(centerX - 4, centerY - 4, 48, 48);
-  ctx.fillStyle = '#1a9fff';
-  ctx.font = 'bold 24px Plus Jakarta Sans, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('G', size / 2, size / 2);
-}
-
-function drawQRMarker(ctx, x, y, cellSize) {
-  // Outer
-  for (let i = 0; i < 7; i++) {
-    ctx.fillRect(x + i * cellSize, y, cellSize, cellSize);
-    ctx.fillRect(x + i * cellSize, y + 6 * cellSize, cellSize, cellSize);
-    ctx.fillRect(x, y + i * cellSize, cellSize, cellSize);
-    ctx.fillRect(x + 6 * cellSize, y + i * cellSize, cellSize, cellSize);
-  }
-  // Inner
-  for (let i = 2; i < 5; i++) {
-    for (let j = 2; j < 5; j++) {
-      ctx.fillRect(x + i * cellSize, y + j * cellSize, cellSize, cellSize);
-    }
-  }
-}
-
-function switchQRTab(tab, el) {
-  document.querySelectorAll('#page-qr .tab-btn').forEach(t => t.classList.remove('active'));
-  if (el) el.classList.add('active');
-  document.getElementById('qr-myqr').classList.toggle('hidden', tab !== 'myqr');
-  document.getElementById('qr-scan').classList.toggle('hidden', tab !== 'scan');
-}
-
-async function processScanPay() {
+  const code = (document.getElementById('promo-code-input')?.value || '').trim().toUpperCase();
+  if (!code) { showToast('Masukkan kode promo', 'error'); return; }
   if (!requireEmailVerified()) return;
-
-  const uidOrEmail = document.getElementById('scan-uid').value.trim();
-  const amount = parseInt(document.getElementById('scan-amount').value);
-  const note = document.getElementById('scan-note').value.trim();
-
-  if (!uidOrEmail) { showToast('Masukkan UID atau email', 'error'); return; }
-  if (!amount || amount < 100) { showToast('Minimal G100', 'error'); return; }
-  if (!userData || userData.balance < amount) { showToast('Saldo tidak cukup', 'error'); return; }
-
-  const btn = event.target;
-  toggleBtnLoading(btn, true);
-
+  const snap = await db.ref('promoCodes').orderByChild('code').equalTo(code).once('value');
+  if (!snap.exists()) { showToast('Kode promo tidak valid', 'error'); return; }
+  const [id, p] = Object.entries(snap.val())[0];
+  // FIX: cek isActive
+  if (p.isActive === false) { showToast('Promo sudah tidak aktif', 'error'); return; }
+  if (p.maxUses && (p.currentUses || 0) >= p.maxUses) { showToast('Kuota promo habis', 'error'); return; }
+  if (p.expiryDate && new Date(p.expiryDate) < new Date()) { showToast('Promo sudah kedaluwarsa', 'error'); return; }
+  const usedSnap = await db.ref('users/' + currentUser.uid + '/usedPromos/' + id).once('value');
+  if (usedSnap.exists()) { showToast('Anda sudah menggunakan promo ini', 'error'); return; }
+  // FIX: baca field discount (bukan value)
+  const reward = p.type === 'percent'
+    ? Math.floor((userData?.balance || 0) * p.discount / 100)
+    : (p.discount || 0);
   try {
-    // Find user by UID or email
-    let recipientUid = null;
-    const snap = await db.ref('users').once('value');
-    const users = snap.val() || {};
-
-    for (const [uid, u] of Object.entries(users)) {
-      if (uid === uidOrEmail || (u.email && u.email.toLowerCase() === uidOrEmail.toLowerCase())) {
-        recipientUid = uid;
-        break;
-      }
-    }
-
-    if (!recipientUid || recipientUid === currentUser.uid) {
-      showToast('Pengguna tidak ditemukan', 'error');
-      toggleBtnLoading(btn, false);
-      return;
-    }
-
-    // Transfer
-    await db.ref('users/' + currentUser.uid + '/balance').transaction(c => (c || 0) >= amount ? (c || 0) - amount : undefined);
-    await db.ref('users/' + recipientUid + '/balance').transaction(c => (c || 0) + amount);
-
+    await db.ref('users/' + currentUser.uid + '/balance').transaction(cur => (cur || 0) + reward);
+    await db.ref('users/' + currentUser.uid + '/usedPromos/' + id).set(true);
+    await db.ref('promoCodes/' + id + '/currentUses').transaction(cur => (cur || 0) + 1);
     await db.ref('transactions').push({
-      fromUid: currentUser.uid,
-      toUid: recipientUid,
-      type: 'qr_pay',
-      amount,
-      status: 'success',
-      description: note || 'QR Pay',
-      date: Date.now()
+      fromUid: 'system', toUid: currentUser.uid,
+      type: 'reward', amount: reward, status: 'success',
+      description: `Promo ${code}`, date: Date.now()
     });
-
-    showToast('Pembayaran berhasil! G' + formatNumber(amount), 'success');
-    document.getElementById('scan-uid').value = '';
-    document.getElementById('scan-amount').value = '';
-    document.getElementById('scan-note').value = '';
+    showToast(`Promo berhasil! +G${formatNumber(reward)}`, 'success');
+    if (document.getElementById('promo-code-input')) document.getElementById('promo-code-input').value = '';
+    renderMyVouchers();
   } catch (err) {
     showToast('Gagal: ' + err.message, 'error');
   }
-  toggleBtnLoading(btn, false);
 }
 
-// ===== G PROTECTION =====
-function updateProtection() {
-  if (!userData || !currentUser) return;
-  let score = 0;
-  const checks = [];
-
-  // PIN
-  if (userData.pin && userData.pin.length === 6) { score += 20; checks.push('pin'); }
-  // Email
-  if (currentUser.emailVerified) { score += 20; checks.push('email'); }
-  // Phone
-  if (userData.isPhoneVerified) { score += 20; checks.push('phone'); }
-  // Biometric
-  if (safeStorage.getItem('gpay_biometric') === 'true') { score += 20; checks.push('bio'); }
-  // Strong password (always true if registered, as min 8 chars)
-  score += 20; checks.push('pass');
-
-  // Update circle
-  const arc = document.getElementById('protection-arc');
-  const circumference = 2 * Math.PI * 54; // 339.292
-  const offset = circumference - (score / 100) * circumference;
-  if (arc) arc.setAttribute('stroke-dashoffset', offset);
-
-  setTextContent('protection-percent', score + '%');
-  setTextContent('home-protection-score', score + '%');
-
-  const homeFill = document.getElementById('home-protection-fill');
-  if (homeFill) homeFill.style.width = score + '%';
-
-  // Update protection items
-  updateProtectionItem('prot-pin', checks.includes('pin'));
-  updateProtectionItem('prot-email', checks.includes('email'));
-  updateProtectionItem('prot-phone', checks.includes('phone'));
-  updateProtectionItem('prot-bio', checks.includes('bio'));
-  updateProtectionItem('prot-pass', checks.includes('pass'));
-
-  // Update toggles
-  const phoneToggle = document.getElementById('prot-phone-toggle');
-  const bioToggle = document.getElementById('prot-bio-toggle');
-  const settingsBioToggle = document.getElementById('settings-bio-toggle');
-  const settingsPhoneToggle = document.getElementById('settings-phone-toggle');
-  if (phoneToggle) phoneToggle.checked = checks.includes('phone');
-  if (bioToggle) bioToggle.checked = checks.includes('bio');
-  if (settingsBioToggle) settingsBioToggle.checked = checks.includes('bio');
-  if (settingsPhoneToggle) settingsPhoneToggle.checked = checks.includes('phone');
-
-  // Pass badge
-  const passBadge = document.getElementById('pass-badge');
-  if (passBadge) {
-    passBadge.className = 'pi-badge done';
-  }
-  setTextContent('pass-strength-text', 'Password kuat ✓');
-
-  // PIN button
-  const pinItem = document.getElementById('prot-pin');
-  if (pinItem && checks.includes('pin')) {
-    const btn = pinItem.querySelector('.btn');
-    if (btn) { btn.textContent = 'Ubah'; }
-  }
-
-  // Save to DB
-  db.ref('users/' + currentUser.uid + '/protectionScore').set(score);
-}
-
-function updateProtectionItem(id, isDone) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (isDone) {
-    el.style.borderLeft = '3px solid var(--success)';
-  } else {
-    el.style.borderLeft = '';
-  }
-}
-
-function togglePhoneVerify() {
-  if (!currentUser) return;
-  const isChecked = document.getElementById('prot-phone-toggle')?.checked || document.getElementById('settings-phone-toggle')?.checked;
-  db.ref('users/' + currentUser.uid + '/isPhoneVerified').set(!!isChecked);
-  showToast(isChecked ? 'Nomor HP diverifikasi' : 'Verifikasi HP dibatalkan', isChecked ? 'success' : 'warning');
-}
-
-function toggleBiometric() {
-  const isChecked = document.getElementById('prot-bio-toggle')?.checked || document.getElementById('settings-bio-toggle')?.checked;
-  safeStorage.setItem('gpay_biometric', isChecked ? 'true' : 'false');
-  showToast(isChecked ? 'Biometrik diaktifkan' : 'Biometrik dinonaktifkan', isChecked ? 'success' : 'warning');
-  updateProtection();
-}
-
-// ===== PIN =====
-function pinNext(input) {
-  if (input.value && input.nextElementSibling) {
-    input.nextElementSibling.focus();
-  }
-}
-
-function pinPrev(e, input) {
-  if (e.key === 'Backspace' && !input.value && input.previousElementSibling) {
-    input.previousElementSibling.focus();
-  }
-}
-
-async function savePin() {
-  const inputs = document.querySelectorAll('#set-pin-modal .pin-input');
-  let pin = '';
-  inputs.forEach(inp => pin += inp.value);
-
-  if (pin.length !== 6) {
-    showToast('Masukkan PIN 6 digit', 'error');
-    return;
-  }
-
-  try {
-    await db.ref('users/' + currentUser.uid + '/pin').set(pin);
-    showToast('PIN berhasil disimpan', 'success');
-    hideModal('set-pin-modal');
-    inputs.forEach(inp => inp.value = '');
-    updateProtection();
-  } catch (err) {
-    showToast('Gagal menyimpan PIN', 'error');
-  }
-}
-
-// ===== CHANGE PASSWORD =====
-async function changePassword() {
-  const oldPass = document.getElementById('old-password').value;
-  const newPass = document.getElementById('new-password').value;
-  const confirmPass = document.getElementById('confirm-new-password').value;
-
-  if (!oldPass || !newPass || !confirmPass) {
-    showToast('Lengkapi semua field', 'error');
-    return;
-  }
-  if (newPass !== confirmPass) {
-    showToast('Password baru tidak cocok', 'error');
-    return;
-  }
-  if (newPass.length < 8) {
-    showToast('Password minimal 8 karakter', 'error');
-    return;
-  }
-
-  try {
-    // Re-authenticate
-    const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, oldPass);
-    await currentUser.reauthenticateWithCredential(credential);
-    await currentUser.updatePassword(newPass);
-    showToast('Password berhasil diubah', 'success');
-    hideModal('change-password-modal');
-    document.getElementById('old-password').value = '';
-    document.getElementById('new-password').value = '';
-    document.getElementById('confirm-new-password').value = '';
-  } catch (err) {
-    showToast(getAuthError(err.code), 'error');
-  }
-}
-
-// ===== SAVE PROFILE =====
-async function saveProfile() {
-  const name = document.getElementById('settings-name').value.trim();
-  const phone = document.getElementById('settings-phone').value.trim();
-
-  if (!name) {
-    showToast('Nama tidak boleh kosong', 'error');
-    return;
-  }
-
-  try {
-    await db.ref('users/' + currentUser.uid).update({
-      fullName: name,
-      phone: phone
-    });
-    await currentUser.updateProfile({ displayName: name });
-    showToast('Profil berhasil disimpan', 'success');
-  } catch (err) {
-    showToast('Gagal menyimpan: ' + err.message, 'error');
-  }
+function renderMyVouchers() {
+  const container = document.getElementById('my-vouchers');
+  if (!container || !userData?.usedPromos) return;
+  const usedIds = Object.keys(userData.usedPromos);
+  if (!usedIds.length) return;
+  container.innerHTML = usedIds.map(id => {
+    return `<div class="voucher-card used"><div class="vc-code">${id}</div><div class="vc-badge used">Sudah digunakan</div></div>`;
+  }).join('');
 }
 
 // ===== BILLS =====
 function listenBills(uid) {
   db.ref('bills').orderByChild('uid').equalTo(uid).on('value', (snap) => {
-    const data = snap.val();
-    renderBills(data);
+    const data      = snap.val();
+    const container = document.getElementById('bills-list');
+    if (!data) {
+      container.innerHTML = `<div class="empty-state"><i class="fas fa-file-invoice"></i><p>Belum ada tagihan</p></div>`;
+      return;
+    }
+    renderBillsList(data);
   });
 }
 
-let allBills = {};
-let currentBillFilter = 'all';
-
-function renderBills(data) {
-  allBills = data || {};
+function renderBillsList(data, filterType = 'all') {
   const container = document.getElementById('bills-list');
-
-  const items = Object.entries(allBills).filter(([id, b]) => {
-    if (currentBillFilter === 'all') return true;
-    return b.category === currentBillFilter;
-  });
-
-  if (items.length === 0) {
-    container.innerHTML = '<div class="empty-state"><i class="fas fa-file-invoice"></i><p>Belum ada tagihan</p></div>';
-    return;
-  }
-
-  container.innerHTML = items.map(([id, bill]) => {
-    const iconMap = { listrik: 'fa-bolt', air: 'fa-tint', internet: 'fa-wifi', bpjs: 'fa-hospital' };
-    const icon = iconMap[bill.category] || 'fa-file-invoice';
-    return `
-      <div class="bill-item" onclick="payBill('${id}')">
-        <div class="bill-icon-circle"><i class="fas ${icon}"></i></div>
-        <div class="bill-info">
-          <strong>${bill.name}</strong>
-          <small>${bill.category.toUpperCase()} • ${bill.accountNumber}</small>
-        </div>
-        <span class="tx-amount negative">G${formatNumber(bill.amount)}</span>
+  let items = Object.entries(data).map(([id, b]) => ({ id, ...b }));
+  if (filterType !== 'all') items = items.filter(b => (b.category || b.type) === filterType);
+  container.innerHTML = items.map(b => {
+    const status = b.status || 'unpaid';
+    const color  = status === 'paid' ? 'var(--success)' : status === 'overdue' ? 'var(--danger)' : 'var(--warning)';
+    return `<div class="bill-item">
+      <div class="bill-icon"><i class="fas fa-file-invoice"></i></div>
+      <div class="bill-info">
+        <div class="bill-name">${b.name || b.category || 'Tagihan'}</div>
+        <div class="bill-due">Jatuh tempo: ${formatDate(b.dueDate || b.due)}</div>
       </div>
-    `;
+      <div class="bill-right">
+        <div class="bill-amount">G${formatNumber(b.amount)}</div>
+        <span class="bill-status" style="color:${color}">${status}</span>
+      </div>
+    </div>`;
   }).join('');
 }
 
-function filterBills(category, el) {
-  currentBillFilter = category;
+function filterBills(type, el) {
   document.querySelectorAll('#page-bills .chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  renderBills(allBills);
+  if (el) el.classList.add('active');
+  db.ref('bills').orderByChild('uid').equalTo(currentUser?.uid).once('value', snap => {
+    if (snap.exists()) renderBillsList(snap.val(), type);
+  });
 }
 
-async function addBill() {
-  const category = document.getElementById('bill-category').value;
-  const account = document.getElementById('bill-account').value.trim();
-  const name = document.getElementById('bill-name').value.trim();
-  const amount = parseInt(document.getElementById('bill-amount').value);
+function showModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) { modal.classList.add('active'); modal.style.display = 'flex'; }
+}
+function hideModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) { modal.classList.remove('active'); modal.style.display = 'none'; }
+}
 
-  if (!category || !account || !name || !amount) {
-    showToast('Lengkapi semua field', 'error');
-    return;
+// ===== G PROTECTION =====
+function updateProtection() {
+  if (!userData) return;
+  let score    = 20;
+  const pItems = {
+    pin:   !!userData.pin,
+    email: !!(currentUser && currentUser.emailVerified),
+    phone: !!userData.isPhoneVerified,
+    bio:   !!userData.biometric,
+    pass:  !!(userData.password && userData.password.length >= 8)
+  };
+  if (pItems.pin)   score += 20;
+  if (pItems.email) score += 20;
+  if (pItems.phone) score += 15;
+  if (pItems.bio)   score += 15;
+  if (pItems.pass)  score += 10;
+  score = Math.min(score, 100);
+  db.ref('users/' + currentUser?.uid).update({ protectionScore: score });
+
+  setTextContent('home-protection-score', score);
+  setTextContent('protection-percent',    score);
+  const fillEl = document.getElementById('home-protection-fill');
+  const arcEl  = document.getElementById('protection-arc');
+  if (fillEl) fillEl.style.width = score + '%';
+  if (arcEl) {
+    const circ   = 2 * Math.PI * 54;
+    const offset = circ - (circ * score / 100);
+    arcEl.style.strokeDashoffset = offset;
+    arcEl.style.stroke = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
   }
 
+  const pId = document.getElementById('prot-pin');
+  const pEm = document.getElementById('prot-email');
+  if (pId) pId.classList.toggle('done', pItems.pin);
+  if (pEm) pEm.classList.toggle('done', pItems.email);
+
+  const passText  = document.getElementById('pass-strength-text');
+  const passBadge = document.getElementById('pass-badge');
+  if (userData.pin && passText)  passText.textContent  = 'PIN sudah diatur';
+  if (userData.pin && passBadge) passBadge.style.display = 'inline';
+}
+
+async function savePin() {
+  const inputs = document.querySelectorAll('#set-pin-modal .pin-input');
+  const pin    = [...inputs].map(i => i.value).join('');
+  if (pin.length !== 6) { showToast('PIN harus 6 digit', 'error'); return; }
   try {
-    await db.ref('bills').push({
-      uid: currentUser.uid,
-      category,
-      accountNumber: account,
-      name,
-      amount
-    });
-    showToast('Tagihan ditambahkan', 'success');
-    hideModal('add-bill-modal');
-    document.getElementById('bill-category').value = '';
-    document.getElementById('bill-account').value = '';
-    document.getElementById('bill-name').value = '';
-    document.getElementById('bill-amount').value = '';
+    await db.ref('users/' + currentUser.uid).update({ pin });
+    showToast('PIN berhasil disimpan', 'success');
+    hideModal('set-pin-modal');
+    inputs.forEach(i => i.value = '');
+  } catch (err) {
+    showToast('Gagal menyimpan PIN: ' + err.message, 'error');
+  }
+}
+
+function pinNext(input) {
+  if (input.value.length === 1) {
+    const next = input.nextElementSibling;
+    if (next && next.classList.contains('pin-input')) next.focus();
+  }
+}
+
+function pinPrev(e, input) {
+  if (e.key === 'Backspace' && !input.value) {
+    const prev = input.previousElementSibling;
+    if (prev && prev.classList.contains('pin-input')) { prev.focus(); prev.value = ''; }
+  }
+}
+
+function togglePhoneVerify() {
+  showToast('Verifikasi HP akan segera hadir', 'info');
+  const toggle = document.getElementById('prot-phone-toggle');
+  if (toggle) toggle.checked = false;
+}
+
+function toggleBiometric() {
+  showToast('Biometrik akan segera hadir', 'info');
+  const toggle = document.getElementById('prot-bio-toggle');
+  if (toggle) toggle.checked = false;
+}
+
+// ===== SETTINGS =====
+async function saveProfile() {
+  const name  = document.getElementById('settings-name').value.trim();
+  const phone = document.getElementById('settings-phone').value.trim();
+  if (!name) { showToast('Nama tidak boleh kosong', 'error'); return; }
+  try {
+    await db.ref('users/' + currentUser.uid).update({ fullName: name, phone });
+    await currentUser.updateProfile({ displayName: name });
+    showToast('Profil berhasil disimpan', 'success');
   } catch (err) {
     showToast('Gagal: ' + err.message, 'error');
   }
 }
 
-async function payBill(billId) {
-  if (!requireEmailVerified()) return;
-
-  const bill = allBills[billId];
-  if (!bill) return;
-
-  if (!userData || userData.balance < bill.amount) {
-    showToast('Saldo tidak cukup', 'error');
-    return;
-  }
-
-  if (!confirm(`Bayar tagihan ${bill.name} sebesar G${formatNumber(bill.amount)}?`)) return;
-
+async function changePassword() {
+  const oldPass     = document.getElementById('old-password').value;
+  const newPass     = document.getElementById('new-password').value;
+  const confirmPass = document.getElementById('confirm-new-password').value;
+  if (!oldPass || !newPass) { showToast('Isi semua field password', 'error'); return; }
+  if (newPass !== confirmPass) { showToast('Konfirmasi password tidak cocok', 'error'); return; }
+  if (newPass.length < 8) { showToast('Password minimal 8 karakter', 'error'); return; }
   try {
-    await db.ref('users/' + currentUser.uid + '/balance').transaction(c => {
-      if ((c || 0) < bill.amount) return;
-      return (c || 0) - bill.amount;
-    });
-
-    await db.ref('transactions').push({
-      fromUid: currentUser.uid,
-      toUid: 'system',
-      type: 'bill',
-      amount: bill.amount,
-      status: 'success',
-      description: 'Bayar ' + bill.name + ' (' + bill.category + ')',
-      date: Date.now()
-    });
-
-    // Remove bill after payment
-    await db.ref('bills/' + billId).remove();
-
-    showToast('Tagihan berhasil dibayar!', 'success');
+    const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, oldPass);
+    await currentUser.reauthenticateWithCredential(cred);
+    await currentUser.updatePassword(newPass);
+    showToast('Password berhasil diubah', 'success');
+    hideModal('change-password-modal');
   } catch (err) {
-    showToast('Gagal: ' + err.message, 'error');
+    showToast('Gagal: ' + (err.code === 'auth/wrong-password' ? 'Password lama salah' : err.message), 'error');
   }
 }
 
-// ===== CARDS =====
-async function addCard() {
-  const number = document.getElementById('card-number').value.trim();
-  const exp = document.getElementById('card-exp').value.trim();
-  const cvv = document.getElementById('card-cvv').value.trim();
-  const name = document.getElementById('card-name').value.trim();
-
-  if (!number || !exp || !cvv || !name) {
-    showToast('Lengkapi semua field', 'error');
-    return;
-  }
-
-  try {
-    const cardsRef = db.ref('users/' + currentUser.uid + '/cards');
-    const snap = await cardsRef.once('value');
-    const cards = snap.val() || [];
-    cards.push({
-      number: number.replace(/\s/g, '').slice(-4),
-      expiry: exp,
-      name: name,
-      addedAt: Date.now()
-    });
-    await cardsRef.set(cards);
-    showToast('Kartu ditambahkan', 'success');
-    hideModal('add-card-modal');
-
-    // Clear form
-    document.getElementById('card-number').value = '';
-    document.getElementById('card-exp').value = '';
-    document.getElementById('card-cvv').value = '';
-    document.getElementById('card-name').value = '';
-
-    // Re-render payment methods
-    renderPaymentMethods(cards);
-  } catch (err) {
-    showToast('Gagal: ' + err.message, 'error');
-  }
-}
-
-function renderPaymentMethods(cards) {
-  const container = document.getElementById('payment-methods');
-  let html = `
-    <div class="payment-method">
-      <div class="pm-icon"><i class="fas fa-wallet"></i></div>
-      <div class="pm-info">
-        <span class="pm-name">GPay Wallet</span>
-        <span class="pm-desc">Saldo utama</span>
-      </div>
-      <i class="fas fa-check-circle pm-check"></i>
-    </div>
-  `;
-
-  if (cards && cards.length > 0) {
-    cards.forEach(card => {
-      html += `
-        <div class="payment-method">
-          <div class="pm-icon" style="background:#fef3c7;color:#f59e0b;"><i class="fas fa-credit-card"></i></div>
-          <div class="pm-info">
-            <span class="pm-name">•••• ${card.number}</span>
-            <span class="pm-desc">${card.name} • ${card.expiry}</span>
-          </div>
-        </div>
-      `;
-    });
-  }
-
-  container.innerHTML = html;
-}
-
-// ===== DARK MODE =====
 function toggleDarkMode() {
-  const isDark = document.getElementById('dark-mode-toggle').checked;
-  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  safeStorage.setItem('gpay_dark_mode', isDark ? 'true' : 'false');
+  const html  = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? '' : 'dark');
+  safeStorage.setItem('darkMode', isDark ? '0' : '1');
 }
 
-// Initialize dark mode from storage
-(function initDarkMode() {
-  const isDark = safeStorage.getItem('gpay_dark_mode') === 'true';
-  if (isDark) {
+// Init dark mode
+try {
+  if (safeStorage.getItem('darkMode') === '1' ||
+    (!safeStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme:dark)').matches)) {
     document.documentElement.setAttribute('data-theme', 'dark');
-    setTimeout(() => {
-      const toggle = document.getElementById('dark-mode-toggle');
-      if (toggle) toggle.checked = true;
-    }, 100);
+    const t = document.getElementById('dark-mode-toggle');
+    if (t) t.checked = true;
   }
-})();
-
-// ===== BALANCE TOGGLE =====
-function toggleBalance() {
-  balanceHidden = !balanceHidden;
-  const icon = document.querySelector('#eye-toggle i');
-  icon.className = balanceHidden ? 'fas fa-eye-slash' : 'fas fa-eye';
-  if (userData) updateBalanceDisplay(userData.balance || 0, userData.gplusBalance || 0);
-}
+} catch(e) {}
 
 // ===== PROMO SLIDER =====
 function startPromoSlider() {
   const track = document.getElementById('promo-track');
-  const slides = track.querySelectorAll('.promo-slide');
-  const dotsContainer = document.getElementById('promo-dots');
-
-  // Create dots
-  dotsContainer.innerHTML = '';
-  slides.forEach((_, i) => {
-    const dot = document.createElement('div');
-    dot.className = 'promo-dot' + (i === 0 ? ' active' : '');
-    dot.addEventListener('click', () => scrollToSlide(i));
-    dotsContainer.appendChild(dot);
-  });
-
-  // Auto slide
-  if (promoInterval) clearInterval(promoInterval);
+  const dots  = document.getElementById('promo-dots');
+  if (!track) return;
+  const slides = track.children.length;
+  if (!slides) return;
+  if (dots) {
+    dots.innerHTML = [...Array(slides)].map((_, i) =>
+      `<span class="promo-dot ${i===0?'active':''}" onclick="goToSlide(${i})"></span>`
+    ).join('');
+  }
+  clearInterval(promoInterval);
   promoInterval = setInterval(() => {
-    currentPromoSlide = (currentPromoSlide + 1) % slides.length;
-    scrollToSlide(currentPromoSlide);
-  }, 4000);
-
-  // Detect scroll
-  track.addEventListener('scroll', () => {
-    const slideWidth = slides[0].offsetWidth + 12; // gap
-    const index = Math.round(track.scrollLeft / slideWidth);
-    if (index !== currentPromoSlide) {
-      currentPromoSlide = index;
-      updatePromoDots();
-    }
-  });
+    currentPromoSlide = (currentPromoSlide + 1) % slides;
+    track.style.transform = `translateX(-${currentPromoSlide * 100}%)`;
+    document.querySelectorAll('.promo-dot').forEach((d, i) => d.classList.toggle('active', i === currentPromoSlide));
+  }, 3000);
 }
 
-function scrollToSlide(index) {
+function goToSlide(index) {
   const track = document.getElementById('promo-track');
-  const slides = track.querySelectorAll('.promo-slide');
-  if (!slides[index]) return;
-  const slideWidth = slides[0].offsetWidth + 12;
-  track.scrollTo({ left: slideWidth * index, behavior: 'smooth' });
-  currentPromoSlide = index;
-  updatePromoDots();
-}
-
-function updatePromoDots() {
-  document.querySelectorAll('.promo-dot').forEach((dot, i) => {
-    dot.classList.toggle('active', i === currentPromoSlide);
-  });
+  if (!track) return;
+  currentPromoSlide           = index;
+  track.style.transform       = `translateX(-${index * 100}%)`;
+  document.querySelectorAll('.promo-dot').forEach((d, i) => d.classList.toggle('active', i === index));
 }
 
 // ===== FAQ =====
 function toggleFaq(btn) {
   const item = btn.closest('.faq-item');
+  if (!item) return;
   item.classList.toggle('open');
 }
 
-// ===== PASSWORD TOGGLE =====
-function togglePassword(inputId, btn) {
-  const input = document.getElementById(inputId);
-  const icon = btn.querySelector('i');
-  if (input.type === 'password') {
-    input.type = 'text';
-    icon.className = 'fas fa-eye-slash';
-  } else {
-    input.type = 'password';
-    icon.className = 'fas fa-eye';
-  }
-}
-
-// ===== MODALS =====
-function showModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) {
-    modal.classList.add('show');
-    // Animate content
-    const content = modal.querySelector('.modal-content');
-    if (content) {
-      content.style.animation = 'none';
-      content.offsetHeight;
-      content.style.animation = '';
-    }
-  }
-}
-
-function hideModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.classList.remove('show');
-}
-
-// Close modal on backdrop click
-document.querySelectorAll('.modal-overlay').forEach(modal => {
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      modal.classList.remove('show');
-    }
-  });
-});
-
 // ===== TOAST =====
 function showToast(message, type = 'info') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-
-  const iconMap = {
-    success: 'fa-check-circle',
-    error: 'fa-exclamation-circle',
-    warning: 'fa-exclamation-triangle',
-    info: 'fa-info-circle'
-  };
-
-  toast.innerHTML = `
-    <i class="fas ${iconMap[type] || iconMap.info}"></i>
-    <span>${message}</span>
-  `;
-
+  const container = document.getElementById('toast-container') || createToastContainer();
+  const toast     = document.createElement('div');
+  const icons     = { success:'fa-check-circle', error:'fa-times-circle', warning:'fa-exclamation-triangle', info:'fa-info-circle' };
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<i class="fas ${icons[type]||icons.info}"></i><span>${message}</span>`;
   container.appendChild(toast);
-
-  setTimeout(() => {
-    toast.classList.add('removing');
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
+  setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 400); }, 3000);
 }
 
-// ===== UTILITY =====
-function formatNumber(num) {
-  return new Intl.NumberFormat('id-ID').format(num || 0);
+function createToastContainer() {
+  const el    = document.createElement('div');
+  el.id       = 'toast-container';
+  el.className = 'toast-container';
+  document.body.appendChild(el);
+  return el;
 }
 
-function formatDate(timestamp) {
-  if (!timestamp) return '-';
-  const d = new Date(timestamp);
-  const options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
-  return d.toLocaleDateString('id-ID', options);
+// ===== BUTTON LOADING =====
+function toggleBtnLoading(btn, loading) {
+  if (!btn) return;
+  const loaderEl = btn.querySelector('.btn-loader');
+  const spanEl   = btn.querySelector('span');
+  btn.disabled   = loading;
+  if (loaderEl)  loaderEl.classList.toggle('hidden', !loading);
+  if (spanEl)    spanEl.style.opacity = loading ? '0' : '1';
 }
 
-function formatDateShort(timestamp) {
-  if (!timestamp) return '';
-  const d = new Date(timestamp);
-  const now = new Date();
-  const diff = now - d;
-  if (diff < 60000) return 'Baru saja';
-  if (diff < 3600000) return Math.floor(diff / 60000) + 'm';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + 'j';
-  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-}
-
+// ===== HELPERS =====
 function setTextContent(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
 }
 
-function toggleBtnLoading(btn, loading) {
-  if (!btn) return;
-  const loader = btn.querySelector('.btn-loader');
-  if (loader) {
-    loader.classList.toggle('hidden', !loading);
-  }
-  btn.disabled = loading;
+function formatNumber(n) {
+  return (parseInt(n) || 0).toLocaleString('id-ID');
 }
 
-function getTypeLabel(type) {
-  const map = {
-    transfer: 'Transfer',
-    topup: 'Isi Saldo',
-    pulsa: 'Pulsa',
-    bill: 'Tagihan',
-    reward: 'Reward',
-    qr_pay: 'QR Pay',
-    cashback: 'Cashback'
-  };
-  return map[type] || type || 'Transaksi';
+function formatDate(d) {
+  if (!d) return '-';
+  const date = typeof d === 'number' ? new Date(d) : new Date(d);
+  if (isNaN(date.getTime())) return String(d);
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatTimeAgo(ts) {
+  if (!ts) return '-';
+  const diff = Date.now() - ts;
+  if (diff < 60000)     return 'Baru saja';
+  if (diff < 3600000)   return Math.floor(diff / 60000) + ' menit lalu';
+  if (diff < 86400000)  return Math.floor(diff / 3600000) + ' jam lalu';
+  if (diff < 604800000) return Math.floor(diff / 86400000) + ' hari lalu';
+  return formatDate(ts);
 }
 
 function getAuthError(code) {
-  const errors = {
-    'auth/user-not-found': 'Email tidak terdaftar',
-    'auth/wrong-password': 'Password salah',
+  const map = {
+    'auth/user-not-found':    'Akun tidak ditemukan',
+    'auth/wrong-password':    'Password salah',
+    'auth/invalid-email':     'Format email tidak valid',
     'auth/email-already-in-use': 'Email sudah terdaftar',
-    'auth/weak-password': 'Password terlalu lemah',
-    'auth/invalid-email': 'Email tidak valid',
-    'auth/too-many-requests': 'Terlalu banyak percobaan. Coba lagi nanti',
-    'auth/network-request-failed': 'Gagal terhubung ke server',
+    'auth/weak-password':     'Password terlalu lemah',
     'auth/invalid-credential': 'Email atau password salah',
-    'auth/requires-recent-login': 'Silakan login ulang untuk operasi ini'
+    'auth/too-many-requests': 'Terlalu banyak percobaan. Coba lagi nanti.',
+    'auth/network-request-failed': 'Gagal terhubung. Periksa koneksi internet.'
   };
-  return errors[code] || 'Terjadi kesalahan. Silakan coba lagi.';
+  return map[code] || 'Terjadi kesalahan. Coba lagi.';
 }
 
-// ===== KEYBOARD HANDLING =====
-// Prevent zoom on double tap for inputs on iOS
-let lastTouchEnd = 0;
-document.addEventListener('touchend', (e) => {
-  const now = Date.now();
-  if (now - lastTouchEnd <= 300) e.preventDefault();
-  lastTouchEnd = now;
-}, false);
-
-// ===== SERVICE WORKER (if needed) =====
-// For offline support, we'd register a SW here
-
-// ===== LISTRIK PAGE =====
-let selectedListrikAmount = 0;
-let selectedListrikType = 'prepaid';
-
-function selectListrikType(type, el) {
-  selectedListrikType = type;
-  if (el) el.parentElement.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
-  if (el) el.classList.add('active');
-  const pkgSection = document.getElementById('listrik-packages');
-  if (pkgSection) {
-    pkgSection.style.display = type === 'prepaid' ? 'block' : 'none';
-  }
+function toggleBalance() {
+  balanceHidden = !balanceHidden;
+  const eyeBtn  = document.getElementById('eye-toggle');
+  if (eyeBtn) eyeBtn.querySelector('i').className = balanceHidden ? 'fas fa-eye-slash' : 'fas fa-eye';
+  updateBalanceDisplay(userData?.balance || 0, userData?.gplusBalance || 0);
 }
 
-function selectListrikPackage(amount) {
-  selectedListrikAmount = amount;
-  document.querySelectorAll('#listrik-packages .package-card').forEach(c => c.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
-}
-
-async function payListrik() {
-  if (!requireEmailVerified()) return;
-  const meterId = document.getElementById('listrik-meter-id').value.trim();
-  if (!meterId) { showToast('Masukkan nomor meter/ID pelanggan', 'error'); return; }
-  if (selectedListrikType === 'prepaid' && !selectedListrikAmount) {
-    showToast('Pilih nominal token', 'error'); return;
-  }
-  const amount = selectedListrikType === 'prepaid' ? selectedListrikAmount : 0;
-  if (amount > 0 && (userData.balance || 0) < amount) {
-    showToast('Saldo tidak cukup', 'error'); return;
-  }
-  if (amount > 0) {
-    const newBalance = (userData.balance || 0) - amount;
-    await db.ref('users/' + currentUser.uid + '/balance').set(newBalance);
-    const txId = db.ref('transactions').push().key;
-    await db.ref('transactions/' + txId).set({
-      type: 'payment',
-      from: currentUser.uid,
-      amount: amount,
-      description: 'Listrik ' + selectedListrikType + ' - ' + meterId,
-      status: 'completed',
-      timestamp: Date.now()
-    });
-    showToast('Pembayaran listrik berhasil! Token: ' + Math.random().toString().substring(2, 22), 'success');
-    goBack();
-  } else {
-    showToast('Tagihan akan dicek. Fitur sedang dalam pengembangan.', 'info');
-  }
-}
-
-console.log('GPay v3 initialized');
+console.log('GPay v3 app.js loaded — FIXED v1.1');
