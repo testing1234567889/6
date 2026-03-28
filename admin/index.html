@@ -59,6 +59,29 @@
   --radius-xs:6px;
   --transition:all .2s cubic-bezier(.4,0,.2,1);
 }
+[data-theme="dark"]{
+  --sidebar-bg:#0f1117;
+  --sidebar-hover:#1a1d27;
+  --bg:#0f1117;
+  --card:#1a1d27;
+  --text:#f0f0f5;
+  --text-secondary:#9ca3af;
+  --text-muted:#6b7280;
+  --border:#2d3040;
+}
+[data-theme="dark"] .header{background:#1a1d27;border-color:#2d3040}
+[data-theme="dark"] .form-group input,[data-theme="dark"] .filter-input,[data-theme="dark"] .filter-select,[data-theme="dark"] .form-group-inline input,[data-theme="dark"] .form-group-inline select,[data-theme="dark"] .form-group-inline textarea{background:#242733;color:#f0f0f5;border-color:#2d3040}
+[data-theme="dark"] .header-search input{background:#242733;color:#f0f0f5;border-color:#2d3040}
+[data-theme="dark"] thead{background:#242733}
+[data-theme="dark"] tbody tr:nth-child(even){background:#1a1d2780}
+[data-theme="dark"] .card-footer{background:#242733}
+[data-theme="dark"] .tab-btn{color:#9ca3af}
+[data-theme="dark"] .tab-btn.active{background:#1a1d27;color:var(--accent)}
+[data-theme="dark"] .tab-bar{background:#242733}
+[data-theme="dark"] .login-card{background:#1a1d27}
+[data-theme="dark"] .login-card .form-group input{background:#242733;color:#f0f0f5;border-color:#2d3040}
+[data-theme="dark"] .attribution-footer{background:#1a1d27;border-color:#2d3040}
+
 html{font-size:14px;scroll-behavior:smooth}
 body{font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
 a{text-decoration:none;color:inherit}
@@ -593,7 +616,7 @@ tbody tr:nth-child(even):hover{background:var(--accent-light)}
 </div>
 
 <!-- ========== ACCESS DENIED PAGE ========== -->
-<div id="denied-page" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1a1d2e,#0f1117);z-index:9999;display:none;align-items:center;justify-content:center">
+<div id="denied-page" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1a1d2e,#0f1117);z-index:9999;align-items:center;justify-content:center">
   <div style="text-align:center;color:#fff;animation:scaleIn .4s ease">
     <i class="fas fa-shield-halved" style="font-size:4rem;color:var(--danger);margin-bottom:20px"></i>
     <h2 style="font-size:1.5rem;margin-bottom:8px">Akses Ditolak</h2>
@@ -683,6 +706,9 @@ tbody tr:nth-child(even):hover{background:var(--accent-light)}
     </button>
     <button class="header-btn" title="Refresh Data" onclick="refreshAllData()">
       <i class="fas fa-sync-alt"></i>
+    </button>
+    <button class="header-btn" id="themeToggleBtn" title="Toggle Dark/Light Mode" onclick="toggleAdminTheme()">
+      <i class="fas fa-moon" id="themeToggleIcon"></i>
     </button>
     <div class="header-avatar" id="headerAvatar" onclick="navigateTo('settings')" title="Settings">A</div>
   </div>
@@ -1151,7 +1177,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
-const ADMIN_UID = "EsmlqXOnu4VDvCbHp89R0h6ec0R2";
+const ADMIN_UID = "zzfDwQucdycGyVHsM3zq0tx0A9o1";
 
 // ========== STATE ==========
 let allUsers = {};
@@ -2098,6 +2124,27 @@ function esc(s) {
   div.textContent = s || '';
   return div.innerHTML;
 }
+
+// ========== DARK/LIGHT MODE TOGGLE ==========
+function toggleAdminTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? '' : 'dark');
+  const icon = document.getElementById('themeToggleIcon');
+  if (icon) {
+    icon.className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+  }
+  try { window._adminTheme = isDark ? 'light' : 'dark'; } catch(e) {}
+}
+
+// Initialize theme
+try {
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const icon = document.getElementById('themeToggleIcon');
+    if (icon) icon.className = 'fas fa-sun';
+  }
+} catch(e) {}
 
 // Keyboard: Enter to login
 document.addEventListener('keydown', e => {

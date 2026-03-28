@@ -257,7 +257,7 @@
             <div class="service-icon" style="background: #fef3c7; color: #f59e0b;"><i class="fas fa-trophy"></i></div>
             <span>Rewards</span>
           </button>
-          <button class="service-item ripple" onclick="showPage('bills')">
+          <button class="service-item ripple" onclick="showPage('listrik')">
             <div class="service-icon" style="background: #fce7f3; color: #ec4899;"><i class="fas fa-bolt"></i></div>
             <span>Listrik</span>
           </button>
@@ -265,15 +265,15 @@
             <div class="service-icon" style="background: #d1fae5; color: #10b981;"><i class="fas fa-tags"></i></div>
             <span>Deals</span>
           </button>
-          <button class="service-item ripple" onclick="showPage('games')">
+          <button class="service-item ripple" onclick="showToast('Segera hadir','info')">
             <div class="service-icon" style="background: #ede9fe; color: #8b5cf6;"><i class="fas fa-gamepad"></i></div>
             <span>Games</span>
           </button>
-          <button class="service-item ripple" onclick="showPage('investasi')">
+          <button class="service-item ripple" onclick="showToast('Segera hadir','info')">
             <div class="service-icon" style="background: #fef9c3; color: #ca8a04;"><i class="fas fa-chart-line"></i></div>
             <span>Investasi</span>
           </button>
-          <button class="service-item ripple" onclick="showPage('gkaget')">
+          <button class="service-item ripple" onclick="showToast('Segera hadir','info')">
             <div class="service-icon" style="background: #fee2e2; color: #ef4444;"><i class="fas fa-gift"></i></div>
             <span>G Kaget</span>
           </button>
@@ -502,7 +502,17 @@
             <span>Info Umum</span>
             <i class="fas fa-chevron-right"></i>
           </button>
+          <button class="menu-item ripple admin-only-menu" id="admin-menu-item" onclick="window.open('admin/index.html','_blank')" style="display:none;">
+            <i class="fas fa-user-shield" style="color:var(--primary)"></i>
+            <span>Admin Dashboard</span>
+            <i class="fas fa-chevron-right"></i>
+          </button>
         </div>
+
+        <button class="btn btn-danger btn-block ripple" onclick="doLogout()" style="margin:16px 0;">
+          <i class="fas fa-sign-out-alt"></i> Keluar
+        </button>
+
         <p class="version-text">GPay v3.0.0</p>
         <div class="page-bottom-space"></div>
       </div>
@@ -1091,6 +1101,53 @@
       </div>
     </div>
 
+    <!-- LISTRIK -->
+    <div id="page-listrik" class="page sub-page" data-page="listrik">
+      <div class="page-scroll">
+        <div class="sub-header">
+          <button class="back-btn ripple" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+          <h2>Listrik</h2>
+        </div>
+        <div class="bills-content">
+          <div class="input-group">
+            <i class="fas fa-bolt"></i>
+            <input type="text" id="listrik-meter-id" placeholder="Nomor Meter / ID Pelanggan">
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:24px;">
+            <button class="chip active" onclick="selectListrikType('prepaid', this)">Token (Prepaid)</button>
+            <button class="chip" onclick="selectListrikType('postpaid', this)">Tagihan (Postpaid)</button>
+          </div>
+          <div id="listrik-packages">
+            <h4 style="margin-bottom:12px;font-size:14px;font-weight:600;">Pilih Nominal Token</h4>
+            <div class="packages-grid">
+              <button class="package-card ripple" onclick="selectListrikPackage(20000)">
+                <span class="pkg-name">20.000</span><span class="pkg-price">G20.000</span>
+              </button>
+              <button class="package-card ripple" onclick="selectListrikPackage(50000)">
+                <span class="pkg-name">50.000</span><span class="pkg-price">G50.000</span>
+              </button>
+              <button class="package-card ripple" onclick="selectListrikPackage(100000)">
+                <span class="pkg-name">100.000</span><span class="pkg-price">G100.000</span>
+              </button>
+              <button class="package-card ripple" onclick="selectListrikPackage(200000)">
+                <span class="pkg-name">200.000</span><span class="pkg-price">G200.000</span>
+              </button>
+              <button class="package-card ripple" onclick="selectListrikPackage(500000)">
+                <span class="pkg-name">500.000</span><span class="pkg-price">G500.000</span>
+              </button>
+              <button class="package-card ripple" onclick="selectListrikPackage(1000000)">
+                <span class="pkg-name">1.000.000</span><span class="pkg-price">G1.000.000</span>
+              </button>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block ripple" id="listrik-pay-btn" onclick="payListrik()" style="margin-top:24px;">
+            <i class="fas fa-bolt"></i> Bayar Listrik
+          </button>
+        </div>
+        <div class="page-bottom-space"></div>
+      </div>
+    </div>
+
     <!-- ALL SERVICES -->
     <div id="page-all-services" class="page sub-page" data-page="all-services">
       <div class="page-scroll">
@@ -1107,7 +1164,7 @@
             <div class="service-icon" style="background: #fef3c7; color: #f59e0b;"><i class="fas fa-trophy"></i></div>
             <span>Rewards</span>
           </button>
-          <button class="service-item ripple" onclick="showPage('bills')">
+          <button class="service-item ripple" onclick="showPage('listrik')">
             <div class="service-icon" style="background: #fce7f3; color: #ec4899;"><i class="fas fa-bolt"></i></div>
             <span>Listrik</span>
           </button>
@@ -1115,15 +1172,15 @@
             <div class="service-icon" style="background: #d1fae5; color: #10b981;"><i class="fas fa-tags"></i></div>
             <span>Deals</span>
           </button>
-          <button class="service-item ripple" onclick="showPage('games')">
+          <button class="service-item ripple" onclick="showToast('Segera hadir','info')">
             <div class="service-icon" style="background: #ede9fe; color: #8b5cf6;"><i class="fas fa-gamepad"></i></div>
             <span>Games</span>
           </button>
-          <button class="service-item ripple" onclick="showPage('investasi')">
+          <button class="service-item ripple" onclick="showToast('Segera hadir','info')">
             <div class="service-icon" style="background: #fef9c3; color: #ca8a04;"><i class="fas fa-chart-line"></i></div>
             <span>Investasi</span>
           </button>
-          <button class="service-item ripple" onclick="showPage('gkaget')">
+          <button class="service-item ripple" onclick="showToast('Segera hadir','info')">
             <div class="service-icon" style="background: #fee2e2; color: #ef4444;"><i class="fas fa-gift"></i></div>
             <span>G Kaget</span>
           </button>

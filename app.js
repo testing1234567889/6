@@ -154,15 +154,21 @@ function updateUI() {
   const balance = userData.balance || 0;
   const gplus = userData.gplusBalance || 0;
 
-  // Greeting
+  // Greeting - show small greeting text, prominent username
   const hour = new Date().getHours();
   let greeting = 'Selamat Pagi';
   if (hour >= 11 && hour < 15) greeting = 'Selamat Siang';
   else if (hour >= 15 && hour < 18) greeting = 'Selamat Sore';
   else if (hour >= 18 || hour < 4) greeting = 'Selamat Malam';
 
-  setTextContent('greeting-text', greeting);
+  setTextContent('greeting-text', greeting + ' 👋');
   setTextContent('greeting-name', name);
+
+  // Show/hide admin menu item
+  const adminMenuItem = document.getElementById('admin-menu-item');
+  if (adminMenuItem) {
+    adminMenuItem.style.display = (currentUser && currentUser.uid === 'zzfDwQucdycGyVHsM3zq0tx0A9o1') ? 'flex' : 'none';
+  }
   setTextContent('home-avatar', initial);
   setTextContent('profile-avatar', initial);
   setTextContent('profile-name', name);
@@ -205,7 +211,14 @@ function updateBalanceDisplay(balance, gplus) {
   }
 }
 
-function updateEmailVerificationUI() {
+async function updateEmailVerificationUI() {
+  // Force reload to get latest email verification status
+  if (currentUser) {
+    try {
+      await currentUser.reload();
+      currentUser = auth.currentUser;
+    } catch(e) { /* ignore reload errors */ }
+  }
   const isVerified = currentUser && currentUser.emailVerified;
   const badge = document.getElementById('settings-email-badge');
   const statusEl = document.getElementById('email-verify-status');
@@ -236,7 +249,10 @@ function updateEmailVerificationUI() {
 // ===== NAVIGATION =====
 function showPage(pageId) {
   const page = document.getElementById('page-' + pageId);
-  if (!page) return;
+  if (!page) {
+    showToast('Halaman tidak tersedia', 'info');
+    return;
+  }
 
   if (page.classList.contains('sub-page')) {
     pageHistory.push(pageId);
@@ -246,6 +262,17 @@ function showPage(pageId) {
     page.style.animation = 'none';
     page.offsetHeight; // force reflow
     page.style.animation = '';
+
+    // Force populate settings fields every time settings page is shown
+    if (pageId === 'settings' && userData) {
+      const settingsName = document.getElementById('settings-name');
+      const settingsEmail = document.getElementById('settings-email');
+      const settingsPhone = document.getElementById('settings-phone');
+      if (settingsName) settingsName.value = userData.fullName || '';
+      if (settingsEmail) settingsEmail.value = userData.email || (currentUser && currentUser.email) || '';
+      if (settingsPhone) settingsPhone.value = userData.phone || '';
+      updateEmailVerificationUI();
+    }
   } else if (page.classList.contains('auth-page')) {
     document.querySelectorAll('.auth-page').forEach(p => {
       p.classList.remove('active');
@@ -1856,5 +1883,55 @@ document.addEventListener('touchend', (e) => {
 
 // ===== SERVICE WORKER (if needed) =====
 // For offline support, we'd register a SW here
+
+// ===== LISTRIK PAGE =====
+let selectedListrikAmount = 0;
+let selectedListrikType = 'prepaid';
+
+function selectListrikType(type, el) {
+  selectedListrikType = type;
+  if (el) el.parentElement.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const pkgSection = document.getElementById('listrik-packages');
+  if (pkgSection) {
+    pkgSection.style.display = type === 'prepaid' ? 'block' : 'none';
+  }
+}
+
+function selectListrikPackage(amount) {
+  selectedListrikAmount = amount;
+  document.querySelectorAll('#listrik-packages .package-card').forEach(c => c.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+}
+
+async function payListrik() {
+  if (!requireEmailVerified()) return;
+  const meterId = document.getElementById('listrik-meter-id').value.trim();
+  if (!meterId) { showToast('Masukkan nomor meter/ID pelanggan', 'error'); return; }
+  if (selectedListrikType === 'prepaid' && !selectedListrikAmount) {
+    showToast('Pilih nominal token', 'error'); return;
+  }
+  const amount = selectedListrikType === 'prepaid' ? selectedListrikAmount : 0;
+  if (amount > 0 && (userData.balance || 0) < amount) {
+    showToast('Saldo tidak cukup', 'error'); return;
+  }
+  if (amount > 0) {
+    const newBalance = (userData.balance || 0) - amount;
+    await db.ref('users/' + currentUser.uid + '/balance').set(newBalance);
+    const txId = db.ref('transactions').push().key;
+    await db.ref('transactions/' + txId).set({
+      type: 'payment',
+      from: currentUser.uid,
+      amount: amount,
+      description: 'Listrik ' + selectedListrikType + ' - ' + meterId,
+      status: 'completed',
+      timestamp: Date.now()
+    });
+    showToast('Pembayaran listrik berhasil! Token: ' + Math.random().toString().substring(2, 22), 'success');
+    goBack();
+  } else {
+    showToast('Tagihan akan dicek. Fitur sedang dalam pengembangan.', 'info');
+  }
+}
 
 console.log('GPay v3 initialized');
