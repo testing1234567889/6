@@ -1694,30 +1694,40 @@ function renderTopup() {
 
 function approveTopup(id) {
   const t = allTopupRequests[id];
-  if (!t) return;
-  showConfirm('Approve Topup', `Approve topup ${formatRp(t.amount || 0)} untuk ${getUserName(t.uid || t.userId || '')}?`, () => {
-    const uid = t.uid || t.userId;
-    const amount = parseInt(t.amount) || 0;
-    // Use transaction for atomic update
-    const u = allUsers[uid];
-    const field = u && u.saldo !== undefined ? 'saldo' : 'balance';
-    db.ref('users/' + uid + '/' + field).transaction(current => {
-      return (current || 0) + amount;
-    }).then(() => {
-      return db.ref('topupRequests/' + id + '/status').set('approved');
-    }).then(() => {
-      toast('Topup berhasil di-approve', 'success');
-    }).catch(e => toast('Gagal: ' + e.message, 'error'));
+  if (!t) { toast('Data topup tidak ditemukan', 'error'); return; }
+  const uid = t.uid || t.userId;
+  const amount = parseInt(t.amount) || 0;
+  const userName = getUserName(uid);
+  showConfirm('Approve Topup', `Approve topup G${formatRp(amount)} untuk ${userName}?`, async () => {
+    try {
+      // Atomic balance update
+      await db.ref('users/' + uid + '/balance').transaction(current => (current || 0) + amount);
+      // Mark topup as approved
+      await db.ref('topupRequests/' + id).update({ status: 'approved', approvedDate: Date.now(), approvedBy: ADMIN_UID });
+      // Create transaction record
+      await db.ref('transactions').push({
+        fromUid: 'system', toUid: uid, type: 'topup', amount: amount,
+        status: 'success', description: 'Isi Saldo (Admin Approved)', date: Date.now()
+      });
+      toast('Topup G' + formatRp(amount) + ' untuk ' + userName + ' berhasil di-approve!', 'success');
+    } catch(e) {
+      console.error('Approve error:', e);
+      toast('Gagal approve: ' + e.message, 'error');
+    }
   });
 }
 
 function rejectTopup(id) {
   const t = allTopupRequests[id];
-  if (!t) return;
-  showConfirm('Reject Topup', `Reject topup ${formatRp(t.amount || 0)}?`, () => {
-    db.ref('topupRequests/' + id + '/status').set('rejected')
-      .then(() => toast('Topup ditolak', 'success'))
-      .catch(e => toast('Gagal: ' + e.message, 'error'));
+  if (!t) { toast('Data topup tidak ditemukan', 'error'); return; }
+  showConfirm('Reject Topup', `Reject topup G${formatRp(t.amount || 0)}?`, async () => {
+    try {
+      await db.ref('topupRequests/' + id).update({ status: 'rejected', approvedDate: Date.now(), approvedBy: ADMIN_UID });
+      toast('Topup ditolak', 'success');
+    } catch(e) {
+      console.error('Reject error:', e);
+      toast('Gagal reject: ' + e.message, 'error');
+    }
   });
 }
 
@@ -2023,7 +2033,12 @@ function showConfirm(title, msg, cb) {
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmMessage').textContent = msg;
   confirmCallback = cb;
-  document.getElementById('confirmAction').onclick = () => { closeConfirm(); if (confirmCallback) confirmCallback(); };
+  document.getElementById('confirmAction').onclick = () => {
+    const fn = confirmCallback;
+    confirmCallback = null;
+    closeModal('confirmModal');
+    if (fn) fn();
+  };
   openModal('confirmModal');
 }
 function closeConfirm() {
